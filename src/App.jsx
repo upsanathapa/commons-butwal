@@ -5,8 +5,8 @@ import L from 'leaflet'
 import markerIcon from 'leaflet/dist/images/marker-icon.png'
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png'
 import markerShadow from 'leaflet/dist/images/marker-shadow.png'
+import ReportForm from './components/ReportForm'
 
-// Fix: Vite can't find Leaflet's default pin images unless we point to them
 delete L.Icon.Default.prototype._getIconUrl
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: markerIcon2x,
@@ -14,10 +14,8 @@ L.Icon.Default.mergeOptions({
   shadowUrl: markerShadow,
 })
 
-// Starting point of the map: [latitude, longitude]. Change to your own neighbourhood later.
 const CENTER = [27.7006, 83.4484]
 
-// Listens for clicks on the map and tells App where the click happened
 function ClickHandler({ onPick }) {
   useMapEvents({
     click(e) {
@@ -28,29 +26,72 @@ function ClickHandler({ onPick }) {
 }
 
 export default function App() {
-  const [pins, setPins] = useState([])
+  const [issues, setIssues] = useState([])
+  const [pending, setPending] = useState(null)      // where the user clicked
+  const [confirmed, setConfirmed] = useState([])    // ids this user already confirmed
 
-  function addPin(latlng) {
-    setPins((prev) => [
+  function addIssue(details) {
+    setIssues((prev) => [
       ...prev,
-      { id: Date.now(), lat: latlng.lat, lng: latlng.lng },
+      {
+        id: Date.now(),
+        ...details,
+        lat: pending.lat,
+        lng: pending.lng,
+        status: 'Reported',
+        confirmations: 0,
+      },
     ])
+    setPending(null)
+  }
+
+  function confirmIssue(id) {
+    if (confirmed.includes(id)) return
+    setConfirmed((prev) => [...prev, id])
+    setIssues((prev) =>
+      prev.map((i) => {
+        if (i.id !== id) return i
+        const count = i.confirmations + 1
+        return { ...i, confirmations: count, status: count >= 3 ? 'Confirmed' : i.status }
+      })
+    )
   }
 
   return (
-    <MapContainer center={CENTER} zoom={16} style={{ height: '100vh', width: '100%' }}>
-      <TileLayer
-        attribution="&copy; OpenStreetMap contributors"
-        url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
-      />
-      <ClickHandler onPick={addPin} />
-      {pins.map((pin) => (
-        <Marker key={pin.id} position={[pin.lat, pin.lng]}>
-          <Popup>
-            Issue at {pin.lat.toFixed(5)}, {pin.lng.toFixed(5)}
-          </Popup>
-        </Marker>
-      ))}
-    </MapContainer>
+    <>
+      <MapContainer center={CENTER} zoom={16} style={{ height: '100vh', width: '100%' }}>
+        <TileLayer
+          attribution="&copy; OpenStreetMap contributors"
+          url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+        />
+        <ClickHandler onPick={setPending} />
+
+        {issues.map((issue) => (
+          <Marker key={issue.id} position={[issue.lat, issue.lng]}>
+            <Popup>
+              <strong>{issue.title}</strong>
+              <br />
+              {issue.category} · {issue.status}
+              <br />
+              {issue.description}
+              <br />
+              <em>{issue.reporter ? `Reported by ${issue.reporter}` : 'Anonymous'}</em>
+              <br />
+              <button
+                onClick={() => confirmIssue(issue.id)}
+                disabled={confirmed.includes(issue.id)}
+                style={{ marginTop: 6 }}
+              >
+                {confirmed.includes(issue.id) ? 'Confirmed' : 'I see this too'} ({issue.confirmations})
+              </button>
+            </Popup>
+          </Marker>
+        ))}
+      </MapContainer>
+
+      {pending && (
+        <ReportForm position={pending} onSubmit={addIssue} onCancel={() => setPending(null)} />
+      )}
+    </>
   )
 }
