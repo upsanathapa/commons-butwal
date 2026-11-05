@@ -24,6 +24,16 @@ function ClickHandler({ onPick }) {
   })
   return null
 }
+function complaintText(issue) {
+  return (
+    `Issue: ${issue.title}\n` +
+    `Category: ${issue.category}\n` +
+    `Details: ${issue.description || 'No extra details'}\n` +
+    `Location: https://www.openstreetmap.org/?mlat=${issue.lat}&mlon=${issue.lng}#map=19/${issue.lat}/${issue.lng}\n` +
+    `Confirmed by ${issue.confirmations} neighbour(s) on Commons.`
+  )
+}
+
 
 export default function App() {
   const [issues, setIssues] = useState([])
@@ -84,6 +94,13 @@ export default function App() {
               >
                 {confirmed.includes(issue.id) ? 'Confirmed' : 'I see this too'} ({issue.confirmations})
               </button>
+              <br />
+<button
+  onClick={() => navigator.clipboard.writeText(complaintText(issue))}
+  style={{ marginTop: 6 }}
+>
+  Copy complaint text
+</button>-
             </Popup>
           </Marker>
         ))}
