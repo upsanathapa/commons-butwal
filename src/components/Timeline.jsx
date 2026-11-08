@@ -1,16 +1,16 @@
-import { TIMELINE_STEPS, stepIndex } from '../lib/helpers'
+import { TIMELINE_KEYS, stepIndex, statusLabel } from '../lib/helpers'
 
 export default function Timeline({ issue }) {
   const current = stepIndex(issue)
   return (
     <ol className="timeline">
-      {TIMELINE_STEPS.map((label, i) => (
+      {TIMELINE_KEYS.map((key, i) => (
         <li
-          key={label}
+          key={key}
           className={`tl-step ${i < current ? 'tl-done' : ''} ${i === current ? 'tl-now' : ''}`}
         >
           <span className="tl-dot">{i <= current ? '✓' : ''}</span>
-          <span className="tl-label">{label}</span>
+          <span className="tl-label">{statusLabel(key)}</span>
         </li>
       ))}
     </ol>
