@@ -291,3 +291,13 @@ button, input, textarea { font: inherit; }
   margin-top: 6px; border: none; background: none; color: #b91c1c;
   font-size: 12.5px; font-weight: 600; cursor: pointer; padding: 0;
 }
+
+/* Language switch */
+.lang { display: flex; border: 1px solid rgba(255, 255, 255, 0.45); border-radius: 999px; overflow: hidden; }
+.lang button {
+  border: none; background: transparent; color: #fff; padding: 6px 12px;
+  font-weight: 600; font-size: 12.5px; cursor: pointer;
+}
+.lang button.on { background: #fff; color: var(--brand-dark); }
+body { font-family: 'Inter', 'Noto Sans Devanagari', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
+@media (max-width: 800px) { .header-right { gap: 6px; } .lang button { padding: 5px 8px; } }

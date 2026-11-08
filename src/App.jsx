@@ -15,25 +15,22 @@ import ReportCard from './components/ReportCard'
 import Timeline from './components/Timeline'
 import Logo from './components/Logo'
 import { fetchIssues, createIssue, confirmIssue } from './lib/api'
+import { t, catLabel, getLang, setLang } from './lib/i18n'
 import {
   CATEGORY_NAMES,
   categoryInfo,
   displayStatus,
   statusKey,
   timeAgo,
+  daysOpen,
   daysOpenLabel,
   priorityLevel,
+  priorityLabel,
   priorityScore,
 } from './lib/helpers'
 
 // Map starting point: [latitude, longitude]. Change to your own area.
 const CENTER = [27.66875, 83.46506]
-
-const PRIORITY_LABEL = {
-  high: 'Needs attention',
-  medium: 'Medium priority',
-  low: 'Low priority',
-}
 
 function pinIcon(issue) {
   const { color, emoji } = categoryInfo(issue.category)
@@ -46,13 +43,14 @@ function pinIcon(issue) {
   })
 }
 
+// The complaint text stays in English, because it is sent to officials
 function complaintText(issue) {
   return (
     `Issue: ${issue.title}\n` +
     `Category: ${issue.category}\n` +
     `Details: ${issue.description || 'No extra details'}\n` +
     `Location: https://www.openstreetmap.org/?mlat=${issue.lat}&mlon=${issue.lng}#map=19/${issue.lat}/${issue.lng}\n` +
-    `Open for ${daysOpenLabel(issue).replace('Open ', '')}. Confirmed by ${issue.confirmations} neighbour(s) on Commons.`
+    `Open for ${daysOpen(issue)} day(s). Confirmed by ${issue.confirmations} neighbour(s) on Commons.`
   )
 }
 
@@ -76,6 +74,7 @@ function FlyTo({ target }) {
 }
 
 export default function App() {
+  const [lang, setLangState] = useState(getLang)
   const [issues, setIssues] = useState([])
   const [loading, setLoading] = useState(true)
   const [pending, setPending] = useState(null)
@@ -94,8 +93,17 @@ export default function App() {
   })
   const markerRefs = useRef({})
 
-  function notify(type, text) {
-    setToast({ type, text })
+  function switchLang(next) {
+    setLang(next)
+    setLangState(next)
+  }
+
+  useEffect(() => {
+    document.documentElement.lang = lang
+  }, [lang])
+
+  function notify(type, key) {
+    setToast({ type, key })
     setTimeout(() => setToast(null), 3500)
   }
 
@@ -113,7 +121,7 @@ export default function App() {
       setIssues(await fetchIssues())
     } catch (e) {
       console.error(e)
-      notify('error', 'Could not load issues. Check your internet connection.')
+      notify('error', 'toast_loadFail')
     } finally {
       setLoading(false)
     }
@@ -123,19 +131,19 @@ export default function App() {
     loadIssues()
   }, [])
 
-   async function addIssue(details) {
+  async function addIssue(details) {
     try {
       const { photoFailed } = await createIssue(details, pending)
       setPending(null)
       await loadIssues()
       if (photoFailed) {
-        notify('error', 'Report saved, but the photo could not be uploaded.')
+        notify('error', 'toast_photoFailed')
       } else {
-        notify('ok', 'Thank you! Your report is on the map.')
+        notify('ok', 'toast_thanksReport')
       }
     } catch (e) {
       console.error(e)
-      notify('error', 'Could not save the report. Please try again.')
+      notify('error', 'toast_saveFail')
     }
   }
 
@@ -143,20 +151,20 @@ export default function App() {
     try {
       await confirmIssue(id)
       await loadIssues()
-      notify('ok', 'Thanks for confirming this issue.')
+      notify('ok', 'toast_thanksConfirm')
     } catch (e) {
       console.error(e)
-      notify('error', 'Could not save your confirmation.')
+      notify('error', 'toast_confirmFail')
     }
   }
 
   async function copyComplaint(issue) {
     try {
       await navigator.clipboard.writeText(complaintText(issue))
-      notify('ok', 'Complaint text copied. Paste it into Hello Sarkar or send it to your ward office.')
+      notify('ok', 'toast_copied')
     } catch (e) {
       console.error(e)
-      notify('error', 'Could not copy the text.')
+      notify('error', 'toast_copyFail')
     }
   }
 
@@ -192,26 +200,34 @@ export default function App() {
           <Logo size={42} />
           <div>
             <h1>Commons Butwal</h1>
-            <p>See it. Confirm it. Follow it until it is fixed.</p>
+            <p>{t('tagline')}</p>
           </div>
         </div>
         <div className="header-right">
           <div className="stats">
             <div className="stat">
               <b>{issues.length}</b>
-              <span>reported</span>
+              <span>{t('stat_reported')}</span>
             </div>
             <div className="stat">
               <b>{confirmations}</b>
-              <span>confirmations</span>
+              <span>{t('stat_confirmations')}</span>
             </div>
             <div className="stat">
               <b>{fixed}</b>
-              <span>fixed</span>
+              <span>{t('stat_fixed')}</span>
             </div>
           </div>
+          <div className="lang">
+            <button className={lang === 'en' ? 'on' : ''} onClick={() => switchLang('en')}>
+              EN
+            </button>
+            <button className={lang === 'ne' ? 'on' : ''} onClick={() => switchLang('ne')}>
+              नेपाली
+            </button>
+          </div>
           <button className="how-btn" onClick={() => setShowHow(true)}>
-            How it works
+            {t('howBtn')}
           </button>
         </div>
       </header>
@@ -223,13 +239,13 @@ export default function App() {
               className={`tab ${tab === 'issues' ? 'tab-on' : ''}`}
               onClick={() => setTab('issues')}
             >
-              Issues ({issues.length})
+              {t('tabIssues')} ({issues.length})
             </button>
             <button
               className={`tab ${tab === 'report' ? 'tab-on' : ''}`}
               onClick={() => setTab('report')}
             >
-              Report card
+              {t('tabReport')}
             </button>
           </div>
 
@@ -238,7 +254,7 @@ export default function App() {
               <div className="sidebar-top">
                 <input
                   className="search"
-                  placeholder="Search issues…"
+                  placeholder={t('searchPh')}
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                 />
@@ -249,7 +265,7 @@ export default function App() {
                       className={`chip ${category === c ? 'chip-on' : ''}`}
                       onClick={() => setCategory(c)}
                     >
-                      {c === 'All' ? 'All' : `${categoryInfo(c).emoji} ${c}`}
+                      {c === 'All' ? t('all') : `${categoryInfo(c).emoji} ${catLabel(c)}`}
                     </button>
                   ))}
                 </div>
@@ -258,22 +274,20 @@ export default function App() {
                     className={`sort-btn ${sort === 'priority' ? 'sort-on' : ''}`}
                     onClick={() => setSort('priority')}
                   >
-                    Needs attention first
+                    {t('sortPriority')}
                   </button>
                   <button
                     className={`sort-btn ${sort === 'newest' ? 'sort-on' : ''}`}
                     onClick={() => setSort('newest')}
                   >
-                    Newest first
+                    {t('sortNewest')}
                   </button>
                 </div>
               </div>
 
               <div className="list">
-                {loading && <p className="empty">Loading issues…</p>}
-                {!loading && visible.length === 0 && (
-                  <p className="empty">No issues here yet. Click the map to report the first one.</p>
-                )}
+                {loading && <p className="empty">{t('loading')}</p>}
+                {!loading && visible.length === 0 && <p className="empty">{t('emptyList')}</p>}
                 {visible.map((issue) => {
                   const { color, emoji } = categoryInfo(issue.category)
                   const level = priorityLevel(issue)
@@ -285,7 +299,7 @@ export default function App() {
                       <span className="card-body">
                         <span className="card-title">{issue.title}</span>
                         <span className="card-meta">
-                          {issue.category} · {daysOpenLabel(issue)}
+                          {catLabel(issue.category)} · {daysOpenLabel(issue)}
                         </span>
                       </span>
                       <span className="card-side">
@@ -293,7 +307,7 @@ export default function App() {
                           {displayStatus(issue)}
                         </span>
                         {level === 'high' ? (
-                          <span className="prio prio-high">Needs attention</span>
+                          <span className="prio prio-high">{priorityLabel('high')}</span>
                         ) : (
                           <span className="count">✓ {issue.confirmations}</span>
                         )}
@@ -312,7 +326,7 @@ export default function App() {
           )}
 
           <div className="sidebar-foot">
-            Official complaint line: Hello Sarkar <b>1111</b>
+            {t('hotline')} <b>1111</b>
           </div>
         </aside>
 
@@ -351,19 +365,21 @@ export default function App() {
                       )}
                       <div className="popup-title">{issue.title}</div>
                       <div className="popup-meta">
-                        {categoryInfo(issue.category).emoji} {issue.category} ·{' '}
+                        {categoryInfo(issue.category).emoji} {catLabel(issue.category)} ·{' '}
                         {timeAgo(issue.created_at)}
                       </div>
                       <div className="popup-row">
                         <span className="popup-days">{daysOpenLabel(issue)}</span>
                         {level && (
-                          <span className={`prio prio-${level}`}>{PRIORITY_LABEL[level]}</span>
+                          <span className={`prio prio-${level}`}>{priorityLabel(level)}</span>
                         )}
                       </div>
                       <Timeline issue={issue} />
                       {issue.description && <p className="popup-desc">{issue.description}</p>}
                       <div className="popup-by">
-                        {issue.reporter ? `Reported by ${issue.reporter}` : 'Reported anonymously'}
+                        {issue.reporter
+                          ? t('reportedBy', { name: issue.reporter })
+                          : t('anonymous')}
                       </div>
                       <div className="popup-actions">
                         <button
@@ -371,11 +387,11 @@ export default function App() {
                           onClick={() => handleConfirm(issue.id)}
                           disabled={issue.confirmedByMe}
                         >
-                          {issue.confirmedByMe ? 'Confirmed' : 'I see this too'} (
+                          {issue.confirmedByMe ? t('confirmedBtn') : t('confirmBtn')} (
                           {issue.confirmations})
                         </button>
                         <button className="btn btn-ghost" onClick={() => copyComplaint(issue)}>
-                          Copy complaint
+                          {t('copyBtn')}
                         </button>
                       </div>
                     </div>
@@ -385,7 +401,7 @@ export default function App() {
             })}
           </MapContainer>
 
-          {!pending && <div className="hint">Click anywhere on the map to report a problem</div>}
+          {!pending && <div className="hint">{t('hint')}</div>}
 
           {pending && (
             <ReportForm
@@ -400,40 +416,31 @@ export default function App() {
       {showHow && (
         <div className="modal-back" onClick={closeHow}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h2>How Commons works</h2>
-            <p className="modal-lead">
-              Problems often stay unfixed because everyone assumes someone else already reported
-              them. Commons makes each problem visible and keeps track of it until it is fixed.
-            </p>
+            <h2>{t('how_title')}</h2>
+            <p className="modal-lead">{t('how_lead')}</p>
             <ol className="how">
               <li>
-                <b>Spot it.</b> Click the map where the problem is and describe it.
+                <b>{t('how1Title')}</b> {t('how1')}
               </li>
               <li>
-                <b>Confirm it.</b> Neighbours press “I see this too” instead of filing duplicates.
-                Three confirmations mark it as Confirmed.
+                <b>{t('how2Title')}</b> {t('how2')}
               </li>
               <li>
-                <b>Send it.</b> Copy the ready-made complaint text and send it through Hello Sarkar
-                (1111) or your ward office.
+                <b>{t('how3Title')}</b> {t('how3')}
               </li>
               <li>
-                <b>Follow it.</b> Every issue shows how many days it has been open, so nothing
-                quietly disappears.
+                <b>{t('how4Title')}</b> {t('how4')}
               </li>
             </ol>
-            <p className="how-note">
-              <b>Priority score</b> = confirmations × 2 + days open (up to 30) + a safety weight for
-              the category (streetlights and roads count most).
-            </p>
+            <p className="how-note">{t('how_note')}</p>
             <button className="btn btn-primary" onClick={closeHow}>
-              Got it
+              {t('how_gotIt')}
             </button>
           </div>
         </div>
       )}
 
-      {toast && <div className={`toast toast-${toast.type}`}>{toast.text}</div>}
+      {toast && <div className={`toast toast-${toast.type}`}>{t(toast.key)}</div>}
     </div>
   )
 }
