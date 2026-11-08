@@ -1,16 +1,34 @@
-# React + Vite
+# Commons Butwal
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A neighbourhood issue map. Neighbours report local problems, confirm each other's
+reports, and follow each issue until it is fixed.
 
-Currently, two official plugins are available:
+**Live demo:** https://commons-butwal.vercel.app
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## The problem
 
-## React Compiler
+Problems like broken streetlights stay unfixed because everyone assumes someone else
+has already reported them.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## What it does
 
-## Expanding the ESLint configuration
+- Report a problem by clicking the map
+- Neighbours confirm instead of filing duplicates
+- Every issue shows how many days it has been open and where it is in the process
+- A priority ranking shows which issues need attention first
+- A neighbourhood report card shows what percentage has actually been fixed
+- Copy a ready-made complaint text to send through Hello Sarkar (1111) or the ward office
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## Built with
+
+React, Vite, Leaflet, OpenStreetMap, Supabase, Vercel
+
+## Run it locally
+
+1. `npm install`
+2. Copy `.env.example` to `.env` and add your Supabase URL and publishable key
+3. `npm run dev`
+
+## Team
+
+Upsana Thapa and Aristal Regmi
