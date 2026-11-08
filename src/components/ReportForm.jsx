@@ -1,48 +1,82 @@
 import { useState } from 'react'
-
-const CATEGORIES = ['Streetlight', 'Garbage', 'Pothole / Road', 'Drainage', 'Water', 'Other']
+import { CATEGORY_NAMES, categoryInfo } from '../lib/helpers'
 
 export default function ReportForm({ position, onSubmit, onCancel }) {
   const [title, setTitle] = useState('')
-  const [category, setCategory] = useState(CATEGORIES[0])
+  const [category, setCategory] = useState(CATEGORY_NAMES[0])
   const [description, setDescription] = useState('')
   const [reporter, setReporter] = useState('')
+  const [saving, setSaving] = useState(false)
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault()
-    if (!title.trim()) return
-    onSubmit({ title, category, description, reporter })
+    if (!title.trim() || saving) return
+    setSaving(true)
+    await onSubmit({ title, category, description, reporter })
+    setSaving(false)
   }
-
-  const box = {
-    position: 'fixed', top: 16, right: 16, zIndex: 2000, width: 300,
-    background: 'white', color: '#111', padding: 16, borderRadius: 12,
-    boxShadow: '0 4px 20px rgba(0,0,0,0.3)', fontFamily: 'sans-serif',
-  }
-  const field = { width: '100%', padding: 8, marginBottom: 10, boxSizing: 'border-box' }
 
   return (
-    <form style={box} onSubmit={handleSubmit}>
-      <h3 style={{ margin: '0 0 4px' }}>Report an issue</h3>
-      <p style={{ margin: '0 0 12px', fontSize: 12, color: '#555' }}>
-        Location: {position.lat.toFixed(5)}, {position.lng.toFixed(5)}
+    <form className="report" onSubmit={handleSubmit}>
+      <div className="report-head">
+        <h2>Report a problem</h2>
+        <button type="button" className="icon-btn" onClick={onCancel} aria-label="Close">
+          ×
+        </button>
+      </div>
+      <p className="report-loc">
+        📍 {position.lat.toFixed(5)}, {position.lng.toFixed(5)}
       </p>
 
-      <input style={field} placeholder="Short title (e.g. Broken streetlight)"
-        value={title} onChange={(e) => setTitle(e.target.value)} />
+      <label className="label">What is the problem?</label>
+      <input
+        className="input"
+        placeholder="e.g. Streetlight not working near the temple"
+        value={title}
+        maxLength={80}
+        autoFocus
+        onChange={(e) => setTitle(e.target.value)}
+      />
 
-      <select style={field} value={category} onChange={(e) => setCategory(e.target.value)}>
-        {CATEGORIES.map((c) => <option key={c}>{c}</option>)}
-      </select>
+      <label className="label">Category</label>
+      <div className="chips">
+        {CATEGORY_NAMES.map((c) => (
+          <button
+            type="button"
+            key={c}
+            className={`chip ${category === c ? 'chip-on' : ''}`}
+            onClick={() => setCategory(c)}
+          >
+            {categoryInfo(c).emoji} {c}
+          </button>
+        ))}
+      </div>
 
-      <textarea style={field} rows={3} placeholder="Describe the problem"
-        value={description} onChange={(e) => setDescription(e.target.value)} />
+      <label className="label">Details (optional)</label>
+      <textarea
+        className="input"
+        rows={3}
+        placeholder="What is wrong, and why does it matter?"
+        value={description}
+        onChange={(e) => setDescription(e.target.value)}
+      />
 
-      <input style={field} placeholder="Your name (optional)"
-        value={reporter} onChange={(e) => setReporter(e.target.value)} />
+      <label className="label">Your name (optional)</label>
+      <input
+        className="input"
+        placeholder="Leave empty to stay anonymous"
+        value={reporter}
+        onChange={(e) => setReporter(e.target.value)}
+      />
 
-      <button type="submit" style={{ marginRight: 8, padding: '8px 14px' }}>Submit</button>
-      <button type="button" onClick={onCancel} style={{ padding: '8px 14px' }}>Cancel</button>
+      <div className="report-actions">
+        <button type="button" className="btn btn-ghost" onClick={onCancel}>
+          Cancel
+        </button>
+        <button type="submit" className="btn btn-primary" disabled={saving || !title.trim()}>
+          {saving ? 'Saving…' : 'Submit report'}
+        </button>
+      </div>
     </form>
   )
 }
