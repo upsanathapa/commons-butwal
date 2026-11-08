@@ -1,3 +1,5 @@
+import { t } from "./i18n";
+
 export const CATEGORIES = {
   Streetlight: { color: "#f59e0b", emoji: "💡" },
   Garbage: { color: "#16a34a", emoji: "🗑️" },
@@ -13,12 +15,11 @@ export function categoryInfo(name) {
   return CATEGORIES[name] || CATEGORIES.Other;
 }
 
-const STATUS_LABELS = {
-  reported: "Reported",
-  confirmed: "Confirmed",
-  sent: "Sent to ward",
-  fixed: "Fixed",
-};
+const KNOWN_STATUSES = ["reported", "confirmed", "sent", "fixed"];
+
+export function statusLabel(key) {
+  return KNOWN_STATUSES.includes(key) ? t(`status_${key}`) : key;
+}
 
 // 3 or more neighbours confirming upgrades "reported" to "confirmed"
 export function statusKey(issue) {
@@ -28,8 +29,7 @@ export function statusKey(issue) {
 }
 
 export function displayStatus(issue) {
-  const key = statusKey(issue);
-  return STATUS_LABELS[key] || key;
+  return statusLabel(statusKey(issue));
 }
 
 export function timeAgo(dateString) {
@@ -37,16 +37,13 @@ export function timeAgo(dateString) {
   const seconds = Math.floor(
     (Date.now() - new Date(dateString).getTime()) / 1000,
   );
-  const units = [
-    ["day", 86400],
-    ["hour", 3600],
-    ["minute", 60],
-  ];
-  for (const [name, size] of units) {
-    const n = Math.floor(seconds / size);
-    if (n >= 1) return `${n} ${name}${n > 1 ? "s" : ""} ago`;
-  }
-  return "just now";
+  const days = Math.floor(seconds / 86400);
+  if (days >= 1) return t("daysAgo", { n: days });
+  const hours = Math.floor(seconds / 3600);
+  if (hours >= 1) return t("hoursAgo", { n: hours });
+  const minutes = Math.floor(seconds / 60);
+  if (minutes >= 1) return t("minutesAgo", { n: minutes });
+  return t("justNow");
 }
 
 // ---------- Follow-through helpers ----------
@@ -68,10 +65,10 @@ export function daysOpen(issue) {
 }
 
 export function daysOpenLabel(issue) {
-  if (issue.status === "fixed") return "Fixed";
+  if (issue.status === "fixed") return t("status_fixed");
   const d = daysOpen(issue);
-  if (d === 0) return "Open today";
-  return `Open ${d} day${d > 1 ? "s" : ""}`;
+  if (d === 0) return t("openToday");
+  return d === 1 ? t("openDay") : t("openDays", { n: d });
 }
 
 // Priority = confirmations x 2 + days open (max 30) + safety weight of the category
@@ -92,12 +89,11 @@ export function priorityLevel(issue) {
   return "low";
 }
 
-export const TIMELINE_STEPS = [
-  "Reported",
-  "Confirmed",
-  "Sent to ward",
-  "Fixed",
-];
+export function priorityLabel(level) {
+  return t(`prio_${level}`);
+}
+
+export const TIMELINE_KEYS = ["reported", "confirmed", "sent", "fixed"];
 const STEP_INDEX = { reported: 0, confirmed: 1, sent: 2, fixed: 3 };
 
 export function stepIndex(issue) {

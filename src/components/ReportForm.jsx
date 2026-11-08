@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { CATEGORY_NAMES, categoryInfo } from '../lib/helpers'
+import { t, catLabel } from '../lib/i18n'
 
 export default function ReportForm({ position, onSubmit, onCancel }) {
   const [title, setTitle] = useState('')
@@ -10,7 +11,6 @@ export default function ReportForm({ position, onSubmit, onCancel }) {
   const [preview, setPreview] = useState('')
   const [saving, setSaving] = useState(false)
 
-  // Make a temporary preview of the chosen photo, and clean it up afterwards
   useEffect(() => {
     if (!photo) {
       setPreview('')
@@ -32,7 +32,7 @@ export default function ReportForm({ position, onSubmit, onCancel }) {
   return (
     <form className="report" onSubmit={handleSubmit}>
       <div className="report-head">
-        <h2>Report a problem</h2>
+        <h2>{t('form_title')}</h2>
         <button type="button" className="icon-btn" onClick={onCancel} aria-label="Close">
           ×
         </button>
@@ -41,17 +41,17 @@ export default function ReportForm({ position, onSubmit, onCancel }) {
         📍 {position.lat.toFixed(5)}, {position.lng.toFixed(5)}
       </p>
 
-      <label className="label">What is the problem?</label>
+      <label className="label">{t('form_problem')}</label>
       <input
         className="input"
-        placeholder="e.g. Streetlight not working near the temple"
+        placeholder={t('form_problemPh')}
         value={title}
         maxLength={80}
         autoFocus
         onChange={(e) => setTitle(e.target.value)}
       />
 
-      <label className="label">Category</label>
+      <label className="label">{t('form_category')}</label>
       <div className="chips">
         {CATEGORY_NAMES.map((c) => (
           <button
@@ -60,22 +60,22 @@ export default function ReportForm({ position, onSubmit, onCancel }) {
             className={`chip ${category === c ? 'chip-on' : ''}`}
             onClick={() => setCategory(c)}
           >
-            {categoryInfo(c).emoji} {c}
+            {categoryInfo(c).emoji} {catLabel(c)}
           </button>
         ))}
       </div>
 
-      <label className="label">Photo (optional)</label>
+      <label className="label">{t('form_photo')}</label>
       {preview ? (
         <div className="photo-box">
-          <img className="photo-preview" src={preview} alt="Chosen photo" />
+          <img className="photo-preview" src={preview} alt="" />
           <button type="button" className="photo-remove" onClick={() => setPhoto(null)}>
-            Remove photo
+            {t('form_removePhoto')}
           </button>
         </div>
       ) : (
         <label className="photo-pick">
-          📷 Add a photo
+          {t('form_addPhoto')}
           <input
             type="file"
             accept="image/*"
@@ -85,29 +85,29 @@ export default function ReportForm({ position, onSubmit, onCancel }) {
         </label>
       )}
 
-      <label className="label">Details (optional)</label>
+      <label className="label">{t('form_details')}</label>
       <textarea
         className="input"
         rows={3}
-        placeholder="What is wrong, and why does it matter?"
+        placeholder={t('form_detailsPh')}
         value={description}
         onChange={(e) => setDescription(e.target.value)}
       />
 
-      <label className="label">Your name (optional)</label>
+      <label className="label">{t('form_name')}</label>
       <input
         className="input"
-        placeholder="Leave empty to stay anonymous"
+        placeholder={t('form_namePh')}
         value={reporter}
         onChange={(e) => setReporter(e.target.value)}
       />
 
       <div className="report-actions">
         <button type="button" className="btn btn-ghost" onClick={onCancel}>
-          Cancel
+          {t('form_cancel')}
         </button>
         <button type="submit" className="btn btn-primary" disabled={saving || !title.trim()}>
-          {saving ? 'Saving…' : 'Submit report'}
+          {saving ? t('form_saving') : t('form_submit')}
         </button>
       </div>
     </form>
