@@ -123,12 +123,16 @@ export default function App() {
     loadIssues()
   }, [])
 
-  async function addIssue(details) {
+   async function addIssue(details) {
     try {
-      await createIssue(details, pending)
+      const { photoFailed } = await createIssue(details, pending)
       setPending(null)
       await loadIssues()
-      notify('ok', 'Thank you! Your report is on the map.')
+      if (photoFailed) {
+        notify('error', 'Report saved, but the photo could not be uploaded.')
+      } else {
+        notify('ok', 'Thank you! Your report is on the map.')
+      }
     } catch (e) {
       console.error(e)
       notify('error', 'Could not save the report. Please try again.')

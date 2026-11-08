@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { CATEGORY_NAMES, categoryInfo } from '../lib/helpers'
 
 export default function ReportForm({ position, onSubmit, onCancel }) {
@@ -6,13 +6,26 @@ export default function ReportForm({ position, onSubmit, onCancel }) {
   const [category, setCategory] = useState(CATEGORY_NAMES[0])
   const [description, setDescription] = useState('')
   const [reporter, setReporter] = useState('')
+  const [photo, setPhoto] = useState(null)
+  const [preview, setPreview] = useState('')
   const [saving, setSaving] = useState(false)
+
+  // Make a temporary preview of the chosen photo, and clean it up afterwards
+  useEffect(() => {
+    if (!photo) {
+      setPreview('')
+      return
+    }
+    const url = URL.createObjectURL(photo)
+    setPreview(url)
+    return () => URL.revokeObjectURL(url)
+  }, [photo])
 
   async function handleSubmit(e) {
     e.preventDefault()
     if (!title.trim() || saving) return
     setSaving(true)
-    await onSubmit({ title, category, description, reporter })
+    await onSubmit({ title, category, description, reporter, photo })
     setSaving(false)
   }
 
@@ -51,6 +64,26 @@ export default function ReportForm({ position, onSubmit, onCancel }) {
           </button>
         ))}
       </div>
+
+      <label className="label">Photo (optional)</label>
+      {preview ? (
+        <div className="photo-box">
+          <img className="photo-preview" src={preview} alt="Chosen photo" />
+          <button type="button" className="photo-remove" onClick={() => setPhoto(null)}>
+            Remove photo
+          </button>
+        </div>
+      ) : (
+        <label className="photo-pick">
+          📷 Add a photo
+          <input
+            type="file"
+            accept="image/*"
+            hidden
+            onChange={(e) => setPhoto(e.target.files?.[0] || null)}
+          />
+        </label>
+      )}
 
       <label className="label">Details (optional)</label>
       <textarea

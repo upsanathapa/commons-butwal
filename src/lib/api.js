@@ -1,4 +1,5 @@
 import { supabase } from "./supabase";
+import { uploadPhoto } from "./storage";
 
 // Each browser gets a random ID saved on the device.
 // It lets us allow only one confirmation per device per issue.
@@ -37,17 +38,32 @@ export async function fetchIssues() {
   });
 }
 
-// Save a new issue
+// Save a new issue. If the photo fails to upload, the report is still saved without it.
 export async function createIssue(details, position) {
+  let photoUrl = null;
+  let photoFailed = false;
+
+  if (details.photo) {
+    try {
+      photoUrl = await uploadPhoto(details.photo);
+    } catch (e) {
+      console.error("Photo upload failed", e);
+      photoFailed = true;
+    }
+  }
+
   const { error } = await supabase.from("issues").insert({
     title: details.title.trim(),
     category: details.category,
     description: details.description,
     reporter_name: details.reporter || null,
+    photo_url: photoUrl,
     lat: position.lat,
     lng: position.lng,
   });
   if (error) throw error;
+
+  return { photoFailed };
 }
 
 // Save a confirmation. Code 23505 means "already confirmed", which is fine.
