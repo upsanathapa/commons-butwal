@@ -108,6 +108,13 @@ const STRINGS = {
     cat_Drainage: "Drainage",
     cat_Water: "Water",
     cat_Other: "Other",
+    loc_btn: "My location",
+    loc_here: "Report here",
+    loc_denied:
+      "Could not get your location. Allow location access for this site in your browser settings.",
+    drag_hint: "Drag the orange pin to the exact spot",
+    layer_streets: "Streets",
+    layer_sat: "Satellite",
   },
   ne: {
     tagline: "देख्नुहोस्। पुष्टि गर्नुहोस्। समाधान नहुँदासम्म पछ्याउनुहोस्।",
@@ -199,6 +206,13 @@ const STRINGS = {
     cat_Drainage: "ढल",
     cat_Water: "खानेपानी",
     cat_Other: "अन्य",
+    loc_btn: "मेरो स्थान",
+    loc_here: "यहीँ दर्ता गर्नुहोस्",
+    loc_denied:
+      "तपाईंको स्थान पाउन सकिएन। ब्राउजर सेटिङमा यस साइटलाई स्थान पहुँच अनुमति दिनुहोस्।",
+    drag_hint: "सही ठाउँमा पुर्‍याउन सुन्तला रङको पिन तान्नुहोस्",
+    layer_streets: "सडक नक्सा",
+    layer_sat: "उपग्रह",
   },
 };
 
