@@ -301,3 +301,20 @@ button, input, textarea { font: inherit; }
 .lang button.on { background: #fff; color: var(--brand-dark); }
 body { font-family: 'Inter', 'Noto Sans Devanagari', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
 @media (max-width: 800px) { .header-right { gap: 6px; } .lang button { padding: 5px 8px; } }
+
+/* Exact-location tools */
+.pending-wrap { background: none; border: none; }
+.pending-pin {
+  width: 28px; height: 28px; border-radius: 50%; background: var(--accent);
+  border: 4px solid #fff; box-shadow: 0 0 0 3px var(--brand), 0 2px 8px rgba(0, 0, 0, 0.4);
+  cursor: grab;
+}
+.report-drag { margin: -6px 0 8px; font-size: 12px; color: var(--accent-dark); font-weight: 600; }
+.map-tools { position: absolute; left: 14px; bottom: 28px; z-index: 1000; display: flex; flex-direction: column; gap: 8px; }
+.tool-btn {
+  border: none; background: #fff; border-radius: 999px; padding: 10px 14px; font-weight: 600;
+  font-size: 13.5px; box-shadow: 0 4px 14px rgba(15, 23, 42, 0.25); cursor: pointer; color: var(--ink);
+}
+.tool-btn:hover { background: var(--bg); }
+.tool-primary { background: var(--brand); color: #fff; }
+.tool-primary:hover { background: var(--brand-dark); }

@@ -2,8 +2,10 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   MapContainer,
   TileLayer,
+  LayersControl,
   Marker,
   Popup,
+  Circle,
   CircleMarker,
   useMap,
   useMapEvents,
@@ -72,7 +74,31 @@ function FlyTo({ target }) {
   }, [target, map])
   return null
 }
+const pendingIcon = L.divIcon({
+  className: 'pending-wrap',
+  html: '<div class="pending-pin"></div>',
+  iconSize: [28, 28],
+  iconAnchor: [14, 14],
+})
 
+// Finds the user with GPS when "tick" changes
+function Locator({ tick, onFound, onError }) {
+  const map = useMap()
+  useMapEvents({
+    locationfound(e) {
+      onFound({ lat: e.latlng.lat, lng: e.latlng.lng, acc: e.accuracy })
+    },
+    locationerror() {
+      onError()
+    },
+  })
+  useEffect(() => {
+    if (tick > 0) {
+      map.locate({ setView: true, maxZoom: 19, enableHighAccuracy: true, timeout: 15000 })
+    }
+  }, [tick, map])
+  return null
+}
 export default function App() {
   const [lang, setLangState] = useState(getLang)
   const [issues, setIssues] = useState([])
@@ -82,6 +108,8 @@ export default function App() {
   const [query, setQuery] = useState('')
   const [sort, setSort] = useState('priority')
   const [tab, setTab] = useState('issues')
+  const [locateTick, setLocateTick] = useState(0)
+  const [me, setMe] = useState(null)
   const [target, setTarget] = useState(null)
   const [toast, setToast] = useState(null)
   const [showHow, setShowHow] = useState(() => {
@@ -331,19 +359,53 @@ export default function App() {
         </aside>
 
         <div className="map-wrap">
-          <MapContainer center={CENTER} zoom={16}>
-            <TileLayer
-              attribution="&copy; OpenStreetMap contributors"
-              url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
-            />
+                   <MapContainer center={CENTER} zoom={17} maxZoom={19}>
+            <LayersControl position="topright">
+              <LayersControl.BaseLayer checked name={t('layer_streets')}>
+                <TileLayer
+                  attribution="&copy; OpenStreetMap contributors"
+                  url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+                  maxNativeZoom={19}
+                  maxZoom={19}
+                />
+              </LayersControl.BaseLayer>
+              <LayersControl.BaseLayer name={t('layer_sat')}>
+                <TileLayer
+                  attribution="Tiles &copy; Esri"
+                  url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+                  maxNativeZoom={18}
+                  maxZoom={19}
+                />
+              </LayersControl.BaseLayer>
+            </LayersControl>
             <ClickHandler onPick={setPending} />
             <FlyTo target={target} />
+                        <Locator tick={locateTick} onFound={setMe} onError={() => notify('error', 'loc_denied')} />
+
+                       {me && (
+              <>
+                <Circle
+                  center={[me.lat, me.lng]}
+                  radius={me.acc}
+                  pathOptions={{ color: '#2563eb', weight: 1, fillOpacity: 0.1 }}
+                />
+                <CircleMarker
+                  center={[me.lat, me.lng]}
+                  radius={7}
+                  pathOptions={{ color: '#ffffff', weight: 3, fillColor: '#2563eb', fillOpacity: 1 }}
+                />
+              </>
+            )}
 
             {pending && (
-              <CircleMarker
-                center={[pending.lat, pending.lng]}
-                radius={12}
-                pathOptions={{ color: '#0f766e', fillColor: '#14b8a6', fillOpacity: 0.5 }}
+              <Marker
+                position={[pending.lat, pending.lng]}
+                icon={pendingIcon}
+                draggable
+                zIndexOffset={1000}
+                eventHandlers={{
+                  dragend: (e) => setPending(e.target.getLatLng()),
+                }}
               />
             )}
 
@@ -403,6 +465,21 @@ export default function App() {
 
           {!pending && <div className="hint">{t('hint')}</div>}
 
+          {!pending && (
+            <div className="map-tools">
+              <button className="tool-btn" onClick={() => setLocateTick((n) => n + 1)}>
+                📍 {t('loc_btn')}
+              </button>
+              {me && (
+                <button
+                  className="tool-btn tool-primary"
+                  onClick={() => setPending({ lat: me.lat, lng: me.lng })}
+                >
+                  {t('loc_here')}
+                </button>
+              )}
+            </div>
+          )}
           {pending && (
             <ReportForm
               position={pending}

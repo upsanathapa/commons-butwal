@@ -37,9 +37,10 @@ export default function ReportForm({ position, onSubmit, onCancel }) {
           ×
         </button>
       </div>
-      <p className="report-loc">
+            <p className="report-loc">
         📍 {position.lat.toFixed(5)}, {position.lng.toFixed(5)}
       </p>
+      <p className="report-drag">{t('drag_hint')}</p>
 
       <label className="label">{t('form_problem')}</label>
       <input
