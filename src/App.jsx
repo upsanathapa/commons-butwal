@@ -64,7 +64,23 @@ function complaintText(issue) {
     `Open for ${daysOpen(issue)} day(s). Confirmed by ${issue.confirmations} neighbour(s) on Commons.`
   )
 }
-
+function wardBriefing(issues) {
+  const top = issues
+    .filter((i) => !isFixed(i))
+    .sort((a, b) => priorityScore(b) - priorityScore(a))
+    .slice(0, 5)
+  const lines = top.map(
+    (i, n) =>
+      `${n + 1}. ${i.title} (${i.category}) - open ${daysOpen(i)} day(s), confirmed by ${i.confirmations} neighbour(s). ` +
+      `Location: https://www.openstreetmap.org/?mlat=${i.lat}&mlon=${i.lng}#map=19/${i.lat}/${i.lng}`
+  )
+  return (
+    `Commons Butwal - neighbourhood briefing\n` +
+    `${top.length} open issue(s) need attention, most urgent first:\n\n` +
+    `${lines.join('\n')}\n\n` +
+    `Reported and confirmed by neighbours: commons-butwal.vercel.app`
+  )
+}
 function ClickHandler({ onPick }) {
   useMapEvents({
     click(e) {
@@ -205,6 +221,15 @@ export default function App() {
     try {
       await navigator.clipboard.writeText(complaintText(issue))
       notify('ok', 'toast_copied')
+    } catch (e) {
+      console.error(e)
+      notify('error', 'toast_copyFail')
+    }
+  }
+    async function copyBriefing() {
+    try {
+      await navigator.clipboard.writeText(wardBriefing(issues))
+      notify('ok', 'brief_copied')
     } catch (e) {
       console.error(e)
       notify('error', 'toast_copyFail')
@@ -365,6 +390,9 @@ export default function App() {
           {tab === 'report' && (
             <div className="list">
               <ReportCard issues={issues} onSelect={selectIssue} />
+                            <button className="btn btn-primary brief-btn" onClick={copyBriefing}>
+                {t('brief_btn')}
+              </button>
             </div>
           )}
 
