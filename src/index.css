@@ -307,3 +307,5 @@ button, input, textarea { font: inherit; }
   .hint { font-size: 12.5px; }
   .cat-name { width: 110px; }
 }
+
+.brief-btn { width: 100%; margin-top: 14px; }
