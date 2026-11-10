@@ -16,13 +16,14 @@ import ReportForm from './components/ReportForm'
 import ReportCard from './components/ReportCard'
 import Timeline from './components/Timeline'
 import Logo from './components/Logo'
-import { fetchIssues, createIssue, confirmIssue } from './lib/api'
+import { fetchIssues, createIssue, confirmIssue, castFixVote } from './lib/api'
 import { t, catLabel, getLang, setLang } from './lib/i18n'
 import {
   CATEGORY_NAMES,
   categoryInfo,
   displayStatus,
   statusKey,
+  isFixed,
   timeAgo,
   daysOpen,
   daysOpenLabel,
@@ -44,6 +45,14 @@ function pinIcon(issue) {
     popupAnchor: [0, -30],
   })
 }
+
+// The orange pin you can drag to the exact spot before submitting
+const pendingIcon = L.divIcon({
+  className: 'pending-wrap',
+  html: '<div class="pending-pin"></div>',
+  iconSize: [28, 28],
+  iconAnchor: [14, 14],
+})
 
 // The complaint text stays in English, because it is sent to officials
 function complaintText(issue) {
@@ -74,14 +83,8 @@ function FlyTo({ target }) {
   }, [target, map])
   return null
 }
-const pendingIcon = L.divIcon({
-  className: 'pending-wrap',
-  html: '<div class="pending-pin"></div>',
-  iconSize: [28, 28],
-  iconAnchor: [14, 14],
-})
 
-// Finds the user with GPS when "tick" changes
+// Finds the user with GPS whenever "tick" changes
 function Locator({ tick, onFound, onError }) {
   const map = useMap()
   useMapEvents({
@@ -99,6 +102,7 @@ function Locator({ tick, onFound, onError }) {
   }, [tick, map])
   return null
 }
+
 export default function App() {
   const [lang, setLangState] = useState(getLang)
   const [issues, setIssues] = useState([])
@@ -108,10 +112,10 @@ export default function App() {
   const [query, setQuery] = useState('')
   const [sort, setSort] = useState('priority')
   const [tab, setTab] = useState('issues')
-  const [locateTick, setLocateTick] = useState(0)
-  const [me, setMe] = useState(null)
   const [target, setTarget] = useState(null)
   const [toast, setToast] = useState(null)
+  const [locateTick, setLocateTick] = useState(0)
+  const [me, setMe] = useState(null)
   const [showHow, setShowHow] = useState(() => {
     try {
       return !localStorage.getItem('commons_seen_how')
@@ -186,6 +190,17 @@ export default function App() {
     }
   }
 
+  async function handleFixVote(id, vote) {
+    try {
+      await castFixVote(id, vote)
+      await loadIssues()
+      notify('ok', 'fix_thanks')
+    } catch (e) {
+      console.error(e)
+      notify('error', 'fix_failed')
+    }
+  }
+
   async function copyComplaint(issue) {
     try {
       await navigator.clipboard.writeText(complaintText(issue))
@@ -218,7 +233,7 @@ export default function App() {
     )
   }, [issues, category, query, sort])
 
-  const fixed = issues.filter((i) => i.status === 'fixed').length
+  const fixed = issues.filter((i) => isFixed(i)).length
   const confirmations = issues.reduce((sum, i) => sum + i.confirmations, 0)
 
   return (
@@ -359,8 +374,8 @@ export default function App() {
         </aside>
 
         <div className="map-wrap">
-                   <MapContainer center={CENTER} zoom={17} maxZoom={19}>
-            <LayersControl position="topright">
+          <MapContainer center={CENTER} zoom={17} maxZoom={19}>
+            <LayersControl key={lang} position="topright">
               <LayersControl.BaseLayer checked name={t('layer_streets')}>
                 <TileLayer
                   attribution="&copy; OpenStreetMap contributors"
@@ -378,11 +393,16 @@ export default function App() {
                 />
               </LayersControl.BaseLayer>
             </LayersControl>
+
             <ClickHandler onPick={setPending} />
             <FlyTo target={target} />
-                        <Locator tick={locateTick} onFound={setMe} onError={() => notify('error', 'loc_denied')} />
+            <Locator
+              tick={locateTick}
+              onFound={setMe}
+              onError={() => notify('error', 'loc_denied')}
+            />
 
-                       {me && (
+            {me && (
               <>
                 <Circle
                   center={[me.lat, me.lng]}
@@ -456,6 +476,43 @@ export default function App() {
                           {t('copyBtn')}
                         </button>
                       </div>
+
+                      {['sent', 'fixed', 'disputed'].includes(statusKey(issue)) && (
+                        <div className="verify">
+                          <div className="verify-title">{t('fix_ask')}</div>
+                          {issue.status === 'sent' && statusKey(issue) === 'fixed' && (
+                            <div className="verify-ok">✓ {t('fix_verified')}</div>
+                          )}
+                          {issue.myVote ? (
+                            <div className="verify-done">
+                              {t('fix_voted', {
+                                v:
+                                  issue.myVote === 'fixed'
+                                    ? t('fix_voteFixed')
+                                    : t('fix_voteBroken'),
+                              })}
+                            </div>
+                          ) : (
+                            <div className="verify-btns">
+                              <button
+                                className="btn btn-ghost"
+                                onClick={() => handleFixVote(issue.id, 'fixed')}
+                              >
+                                {t('fix_yes')}
+                              </button>
+                              <button
+                                className="btn btn-ghost"
+                                onClick={() => handleFixVote(issue.id, 'broken')}
+                              >
+                                {t('fix_no')}
+                              </button>
+                            </div>
+                          )}
+                          <div className="verify-counts">
+                            {t('fix_counts', { f: issue.fixedVotes, b: issue.brokenVotes })}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </Popup>
                 </Marker>
@@ -480,6 +537,7 @@ export default function App() {
               )}
             </div>
           )}
+
           {pending && (
             <ReportForm
               position={pending}

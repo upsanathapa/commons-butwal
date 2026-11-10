@@ -5,10 +5,7 @@ export default function Timeline({ issue }) {
   return (
     <ol className="timeline">
       {TIMELINE_KEYS.map((key, i) => (
-        <li
-          key={key}
-          className={`tl-step ${i < current ? 'tl-done' : ''} ${i === current ? 'tl-now' : ''}`}
-        >
+        <li key={key} className={`tl-step ${i < current ? 'tl-done' : ''} ${i === current ? 'tl-now' : ''}`}>
           <span className="tl-dot">{i <= current ? '✓' : ''}</span>
           <span className="tl-label">{statusLabel(key)}</span>
         </li>
