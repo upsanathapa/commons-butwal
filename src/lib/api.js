@@ -101,8 +101,12 @@ export async function createIssue(details, position) {
 
   return { photoFailed };
 }
-
+async function requireUser() {
+  const { data } = await supabase.auth.getSession();
+  if (!data.session) throw new Error("sign_in_required");
+}
 export async function confirmIssue(issueId) {
+  await requireUser();
   const userId = await getCurrentUserId();
   const { error } = await supabase.from("confirmations").insert({
     issue_id: issueId,
@@ -113,6 +117,7 @@ export async function confirmIssue(issueId) {
 }
 
 export async function castFixVote(issueId, vote) {
+  await requireUser();
   const userId = await getCurrentUserId();
   const { error } = await supabase.from("fix_votes").insert({
     issue_id: issueId,
