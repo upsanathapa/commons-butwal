@@ -16,7 +16,7 @@ import ReportForm from './components/ReportForm'
 import ReportCard from './components/ReportCard'
 import Timeline from './components/Timeline'
 import Logo from './components/Logo'
-import { fetchIssues, createIssue, confirmIssue, castFixVote } from './lib/api'
+import { fetchIssues, createIssue, confirmIssue, castFixVote, supabase } from './lib/api'
 import { t, catLabel, getLang, setLang } from './lib/i18n'
 import {
   CATEGORY_NAMES,
@@ -32,7 +32,6 @@ import {
   priorityScore,
 } from './lib/helpers'
 
-// Map starting point: [latitude, longitude]. Change to your own area.
 const CENTER = [27.66875, 83.46506]
 
 function pinIcon(issue) {
@@ -46,7 +45,6 @@ function pinIcon(issue) {
   })
 }
 
-// The orange pin you can drag to the exact spot before submitting
 const pendingIcon = L.divIcon({
   className: 'pending-wrap',
   html: '<div class="pending-pin"></div>',
@@ -54,7 +52,6 @@ const pendingIcon = L.divIcon({
   iconAnchor: [14, 14],
 })
 
-// The complaint text stays in English, because it is sent to officials
 function complaintText(issue) {
   return (
     `Issue: ${issue.title}\n` +
@@ -64,6 +61,7 @@ function complaintText(issue) {
     `Open for ${daysOpen(issue)} day(s). Confirmed by ${issue.confirmations} neighbour(s) on Commons.`
   )
 }
+
 function wardBriefing(issues) {
   const top = issues
     .filter((i) => !isFixed(i))
@@ -72,7 +70,7 @@ function wardBriefing(issues) {
   const lines = top.map(
     (i, n) =>
       `${n + 1}. ${i.title} (${i.category}) - open ${daysOpen(i)} day(s), confirmed by ${i.confirmations} neighbour(s). ` +
-      `Location: https://www.openstreetmap.org/?mlat=${i.lat}&mlon=${i.lng}#map=19/${i.lat}/${i.lng}`
+      `Location: https://www.openstreetmap.org/?mlat=${issue.lat}&mlon=${issue.lng}#map=19/${i.lat}/${i.lng}`
   )
   return (
     `Commons Butwal - neighbourhood briefing\n` +
@@ -81,6 +79,7 @@ function wardBriefing(issues) {
     `Reported and confirmed by neighbours: commons-butwal.vercel.app`
   )
 }
+
 function ClickHandler({ onPick }) {
   useMapEvents({
     click(e) {
@@ -100,7 +99,6 @@ function FlyTo({ target }) {
   return null
 }
 
-// Finds the user with GPS whenever "tick" changes
 function Locator({ tick, onFound, onError }) {
   const map = useMap()
   useMapEvents({
@@ -120,6 +118,7 @@ function Locator({ tick, onFound, onError }) {
 }
 
 export default function App() {
+  const [showAbout, setShowAbout] = useState(false)
   const [lang, setLangState] = useState(getLang)
   const [issues, setIssues] = useState([])
   const [loading, setLoading] = useState(true)
@@ -132,6 +131,7 @@ export default function App() {
   const [toast, setToast] = useState(null)
   const [locateTick, setLocateTick] = useState(0)
   const [me, setMe] = useState(null)
+  const [user, setUser] = useState(null)
   const [showHow, setShowHow] = useState(() => {
     try {
       return !localStorage.getItem('commons_seen_how')
@@ -150,6 +150,33 @@ export default function App() {
     document.documentElement.lang = lang
   }, [lang])
 
+  // Check auth session on load & listen for login changes
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null)
+    })
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null)
+      loadIssues()
+    })
+
+    return () => subscription.unsubscribe()
+  }, [])
+
+  async function signInWithGoogle() {
+    await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: window.location.origin,
+      },
+    })
+  }
+
+  async function signOut() {
+    await supabase.auth.signOut()
+  }
+
   function notify(type, key) {
     setToast({ type, key })
     setTimeout(() => setToast(null), 3500)
@@ -159,9 +186,7 @@ export default function App() {
     setShowHow(false)
     try {
       localStorage.setItem('commons_seen_how', '1')
-    } catch {
-      // storage unavailable: ignore
-    }
+    } catch {}
   }
 
   async function loadIssues() {
@@ -226,7 +251,8 @@ export default function App() {
       notify('error', 'toast_copyFail')
     }
   }
-    async function copyBriefing() {
+
+  async function copyBriefing() {
     try {
       await navigator.clipboard.writeText(wardBriefing(issues))
       notify('ok', 'brief_copied')
@@ -286,6 +312,29 @@ export default function App() {
               <span>{t('stat_fixed')}</span>
             </div>
           </div>
+          
+          {/* User Auth Section */}
+          <div className="auth-section" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            {user ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                {user.user_metadata?.avatar_url && (
+                  <img 
+                    src={user.user_metadata.avatar_url} 
+                    alt="Avatar" 
+                    style={{ width: 28, height: 28, borderRadius: '50%' }} 
+                  />
+                )}
+                <button className="btn btn-ghost" style={{ fontSize: '13px', padding: '4px 8px' }} onClick={signOut}>
+                  Sign Out
+                </button>
+              </div>
+            ) : (
+              <button className="btn btn-primary" style={{ fontSize: '13px', padding: '6px 12px' }} onClick={signInWithGoogle}>
+                Sign in with Google
+              </button>
+            )}
+          </div>
+
           <div className="lang">
             <button className={lang === 'en' ? 'on' : ''} onClick={() => switchLang('en')}>
               EN
@@ -296,6 +345,9 @@ export default function App() {
           </div>
           <button className="how-btn" onClick={() => setShowHow(true)}>
             {t('howBtn')}
+          </button>
+          <button className="how-btn" onClick={() => setShowAbout(true)}>
+            About
           </button>
         </div>
       </header>
@@ -390,7 +442,7 @@ export default function App() {
           {tab === 'report' && (
             <div className="list">
               <ReportCard issues={issues} onSelect={selectIssue} />
-                            <button className="btn btn-primary brief-btn" onClick={copyBriefing}>
+              <button className="btn btn-primary brief-btn" onClick={copyBriefing}>
                 {t('brief_btn')}
               </button>
             </div>
@@ -602,7 +654,58 @@ export default function App() {
           </div>
         </div>
       )}
+      {showAbout && (
+        <div className="modal-back" onClick={() => setShowAbout(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <h2>About Commons Butwal</h2>
+            <p className="modal-lead">
+              Everyone notices a broken streetlight and assumes someone else reported it. Commons
+              makes each problem visible, lets neighbours confirm it, and tracks it until it is
+              really fixed.
+            </p>
 
+            <div className="about-grid">
+              <div className="rc-tile">
+                <b>{issues.length}</b>
+                <span>problems on the map</span>
+              </div>
+              <div className="rc-tile">
+                <b>{new Set(issues.map((i) => i.category)).size}</b>
+                <span>categories</span>
+              </div>
+              <div className="rc-tile">
+                <b>{issues.filter((i) => i.photo_url).length}</b>
+                <span>with photos</span>
+              </div>
+              <div className="rc-tile">
+                <b>{confirmations}</b>
+                <span>neighbour confirmations</span>
+              </div>
+            </div>
+
+            <h3 className="about-h">How we are different</h3>
+            <p className="about-p">
+              Hello Sarkar and Suchak help people file complaints to officials. Commons focuses on
+              one neighbourhood and on follow-through: neighbours confirm instead of filing
+              duplicates, every issue shows how many days it has been open, and a fix only counts
+              when neighbours verify it.
+            </p>
+
+            <h3 className="about-h">Google Authentication</h3>
+            <p className="about-p">
+              Neighbours can now sign in securely with Google to report issues, confirm problems, and vote on fixes.
+            </p>
+
+            <button
+              className="btn btn-primary"
+              style={{ marginTop: 16 }}
+              onClick={() => setShowAbout(false)}
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
       {toast && <div className={`toast toast-${toast.type}`}>{t(toast.key)}</div>}
     </div>
   )
