@@ -133,6 +133,17 @@ export default function App() {
   const [locateTick, setLocateTick] = useState(0)
   const [me, setMe] = useState(null)
   const [user, setUser] = useState(null)
+  const openedFromLink = useRef(false)
+    useEffect(() => {
+    if (openedFromLink.current || issues.length === 0) return
+    const id = new URLSearchParams(window.location.search).get('issue')
+    if (!id) return
+    const found = issues.find((i) => i.id === id)
+    if (found) {
+      openedFromLink.current = true
+      selectIssue(found)
+    }
+  }, [issues])
   const [showHow, setShowHow] = useState(() => {
     try {
       return !localStorage.getItem('commons_seen_how')
@@ -252,7 +263,16 @@ export default function App() {
       notify('error', 'toast_copyFail')
     }
   }
-
+  async function copyLink(issue) {
+    const url = `${window.location.origin}/?issue=${issue.id}`
+    try {
+      await navigator.clipboard.writeText(url)
+      notify('ok', 'share_copied')
+    } catch (e) {
+      console.error(e)
+      notify('error', 'toast_copyFail')
+    }
+  }
   async function copyBriefing() {
     try {
       await navigator.clipboard.writeText(wardBriefing(issues))
@@ -585,6 +605,9 @@ export default function App() {
                         </button>
                         <button className="btn btn-ghost" onClick={() => copyComplaint(issue)}>
                           {t('copyBtn')}
+                        </button>
+                                                <button className="btn btn-ghost" onClick={() => copyLink(issue)}>
+                          {t('share_btn')}
                         </button>
                       </div>
 
