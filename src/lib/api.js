@@ -144,3 +144,123 @@ export async function flagIssue(issueId) {
   const { error } = await supabase.from("flags").insert({ issue_id: issueId });
   if (error && error.code !== "23505") throw error;
 }
+
+export async function isAdmin() {
+  const { data: s } = await supabase.auth.getSession();
+  if (!s.session) return false;
+  const { data } = await supabase
+    .from("admins")
+    .select("user_id")
+    .eq("user_id", s.session.user.id)
+    .maybeSingle();
+  return !!data;
+}
+
+export async function setIssueStatus(issueId, status) {
+  const { data, error } = await supabase
+    .from("issues")
+    .update({ status })
+    .eq("id", issueId)
+    .select();
+  if (error || !data || data.length === 0)
+    throw error || new Error("not_allowed");
+}
+
+// Find possible duplicate issues near a new report.
+export async function checkDuplicateIssues(details, position) {
+  const SEARCH_RADIUS_METERS = 150;
+
+  // Convert distance in metres to approximate latitude/longitude ranges.
+  const latRange = SEARCH_RADIUS_METERS / 111320;
+  const lngRange =
+    SEARCH_RADIUS_METERS / (111320 * Math.cos((position.lat * Math.PI) / 180));
+
+  const { data: issues, error } = await supabase
+    .from("issues")
+    .select("id, title, description, category, lat, lng, status, created_at")
+    .eq("category", details.category)
+    .gte("lat", position.lat - latRange)
+    .lte("lat", position.lat + latRange)
+    .gte("lng", position.lng - lngRange)
+    .lte("lng", position.lng + lngRange)
+    .limit(50);
+
+  if (error) throw error;
+
+  // Calculate actual distance between two coordinates.
+  function distanceInMeters(lat1, lng1, lat2, lng2) {
+    const toRad = (value) => (value * Math.PI) / 180;
+    const earthRadius = 6371000;
+
+    const dLat = toRad(lat2 - lat1);
+    const dLng = toRad(lng2 - lng1);
+
+    const a =
+      Math.sin(dLat / 2) ** 2 +
+      Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+
+    return earthRadius * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  }
+
+  // Compare meaningful words in the titles and descriptions.
+  function textSimilarity(text1, text2) {
+    const getWords = (text) =>
+      new Set(
+        (text || "")
+          .toLowerCase()
+          .replace(/[^a-z0-9\s]/g, " ")
+          .split(/\s+/)
+          .filter((word) => word.length > 2),
+      );
+
+    const words1 = getWords(text1);
+    const words2 = getWords(text2);
+
+    if (!words1.size || !words2.size) return 0;
+
+    const common = [...words1].filter((word) => words2.has(word));
+
+    return common.length / Math.max(words1.size, words2.size);
+  }
+
+  const newText = `${details.title} ${details.description || ""}`;
+
+  return issues
+    .filter((issue) => {
+      // Ignore issues already marked as resolved or closed.
+      const status = (issue.status || "").toLowerCase();
+
+      if (["resolved", "fixed", "closed", "completed"].includes(status)) {
+        return false;
+      }
+
+      const distance = distanceInMeters(
+        position.lat,
+        position.lng,
+        Number(issue.lat),
+        Number(issue.lng),
+      );
+
+      const similarity = textSimilarity(
+        newText,
+        `${issue.title} ${issue.description || ""}`,
+      );
+
+      return (
+        distance <= SEARCH_RADIUS_METERS &&
+        (similarity >= 0.25 || distance <= 40)
+      );
+    })
+    .map((issue) => ({
+      ...issue,
+      distance: Math.round(
+        distanceInMeters(
+          position.lat,
+          position.lng,
+          Number(issue.lat),
+          Number(issue.lng),
+        ),
+      ),
+    }))
+    .sort((a, b) => a.distance - b.distance);
+}

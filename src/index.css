@@ -328,3 +328,7 @@ button, input, textarea { font: inherit; }
 @supports (padding: env(safe-area-inset-bottom)) {
   .sidebar-foot { padding-bottom: calc(10px + env(safe-area-inset-bottom)); }
 }
+
+.admin-box { margin-top: 12px; padding: 8px 10px; background: var(--accent-soft); border-radius: 10px; }
+.admin-title { font-size: 12px; font-weight: 700; color: var(--accent-dark); margin-bottom: 6px; }
+.admin-btns { display: flex; gap: 6px; flex-wrap: wrap; }
