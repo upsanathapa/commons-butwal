@@ -70,7 +70,7 @@ function wardBriefing(issues) {
   const lines = top.map(
     (i, n) =>
       `${n + 1}. ${i.title} (${i.category}) - open ${daysOpen(i)} day(s), confirmed by ${i.confirmations} neighbour(s). ` +
-      `Location: https://www.openstreetmap.org/?mlat=${issue.lat}&mlon=${issue.lng}#map=19/${i.lat}/${i.lng}`
+      `Location: https://www.openstreetmap.org/?mlat=${i.lat}&mlon=${i.lng}#map=19/${i.lat}/${i.lng}`
   )
   return (
     `Commons Butwal - neighbourhood briefing\n` +
@@ -150,7 +150,6 @@ export default function App() {
     document.documentElement.lang = lang
   }, [lang])
 
-  // Check auth session on load & listen for login changes
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null)
@@ -270,7 +269,12 @@ export default function App() {
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase()
     const list = issues
-      .filter((i) => category === 'All' || i.category === category)
+      .filter((i) => {
+        if (category === 'MyReports') {
+          return user ? i.user_id === user.id : false
+        }
+        return category === 'All' || i.category === category
+      })
       .filter(
         (i) =>
           !q ||
@@ -282,7 +286,7 @@ export default function App() {
         ? (a, b) => priorityScore(b) - priorityScore(a)
         : (a, b) => new Date(b.created_at) - new Date(a.created_at)
     )
-  }, [issues, category, query, sort])
+  }, [issues, category, query, sort, user])
 
   const fixed = issues.filter((i) => isFixed(i)).length
   const confirmations = issues.reduce((sum, i) => sum + i.confirmations, 0)
@@ -313,7 +317,6 @@ export default function App() {
             </div>
           </div>
           
-          {/* User Auth Section */}
           <div className="auth-section" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             {user ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -379,6 +382,13 @@ export default function App() {
                   onChange={(e) => setQuery(e.target.value)}
                 />
                 <div className="chips">
+                  <button
+                    className={`chip ${category === 'MyReports' ? 'chip-on' : ''}`}
+                    onClick={() => setCategory('MyReports')}
+                    style={{ background: category === 'MyReports' ? '#2563eb' : undefined, color: category === 'MyReports' ? '#fff' : undefined }}
+                  >
+                    👤 My Reports
+                  </button>
                   {['All', ...CATEGORY_NAMES].map((c) => (
                     <button
                       key={c}
@@ -623,6 +633,7 @@ export default function App() {
               position={pending}
               onSubmit={addIssue}
               onCancel={() => setPending(null)}
+              user={user}
             />
           )}
         </div>
