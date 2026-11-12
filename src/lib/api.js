@@ -144,3 +144,24 @@ export async function flagIssue(issueId) {
   const { error } = await supabase.from("flags").insert({ issue_id: issueId });
   if (error && error.code !== "23505") throw error;
 }
+
+export async function isAdmin() {
+  const { data: s } = await supabase.auth.getSession();
+  if (!s.session) return false;
+  const { data } = await supabase
+    .from("admins")
+    .select("user_id")
+    .eq("user_id", s.session.user.id)
+    .maybeSingle();
+  return !!data;
+}
+
+export async function setIssueStatus(issueId, status) {
+  const { data, error } = await supabase
+    .from("issues")
+    .update({ status })
+    .eq("id", issueId)
+    .select();
+  if (error || !data || data.length === 0)
+    throw error || new Error("not_allowed");
+}

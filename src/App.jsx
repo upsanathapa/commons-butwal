@@ -23,7 +23,7 @@ import {
   castFixVote,
   supabase,
   fetchFlagCounts,
-  flagIssue,
+  flagIssue,isAdmin,setIssueStatus,
 } from './lib/api'
 import { t, catLabel, getLang, setLang } from './lib/i18n'
 import {
@@ -142,7 +142,8 @@ export default function App() {
   const [me, setMe] = useState(null)
   const [user, setUser] = useState(null)
   const [flagCounts, setFlagCounts] = useState({})
-  const [showHow, setShowHow] = useState(() => {
+    const [admin, setAdmin] = useState(false)
+const [showHow, setShowHow] = useState(() => {
     try {
       return !localStorage.getItem('commons_seen_how')
     } catch {
@@ -161,6 +162,8 @@ export default function App() {
     document.documentElement.lang = lang
   }, [lang])
 
+  
+  // Get the current session and listen for authentication changes
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null)
@@ -175,6 +178,16 @@ export default function App() {
 
     return () => subscription.unsubscribe()
   }, [])
+
+  // Check whether the logged-in user is an admin
+  useEffect(() => {
+    if (!user) {
+      setAdmin(false)
+      return
+    }
+
+    isAdmin().then(setAdmin)
+  }, [user])
 
   async function signInWithGoogle() {
     await supabase.auth.signInWithOAuth({
@@ -281,7 +294,16 @@ export default function App() {
       notify('error', e.message === 'sign_in_required' ? 'sign_in_needed' : 'flag_failed')
     }
   }
-
+  async function handleSetStatus(id, status) {
+    try {
+      await setIssueStatus(id, status)
+      await loadIssues()
+      notify('ok', 'admin_updated')
+    } catch (e) {
+      console.error(e)
+      notify('error', 'admin_failed')
+    }
+  }
   async function copyComplaint(issue) {
     try {
       await navigator.clipboard.writeText(complaintText(issue))
@@ -707,7 +729,22 @@ export default function App() {
                           </div>
                         </div>
                       )}
-
+                      {admin && (
+                        <div className="admin-box">
+                          <div className="admin-title">Ward staff controls</div>
+                          <div className="admin-btns">
+                            {['reported', 'sent', 'fixed'].map((s) => (
+                              <button
+                                key={s}
+                                className={`chip ${issue.status === s ? 'chip-on' : ''}`}
+                                onClick={() => handleSetStatus(issue.id, s)}
+                              >
+                                {s}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                       <button className="flag-btn" onClick={() => handleFlag(issue.id)}>
                         ⚑ {t('flag_btn')}
                       </button>
