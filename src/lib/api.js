@@ -127,3 +127,20 @@ export async function castFixVote(issueId, vote) {
   });
   if (error && error.code !== "23505") throw error;
 }
+
+export async function fetchFlagCounts() {
+  const { data, error } = await supabase.from("flags").select("issue_id");
+  if (error || !data) return {};
+  const counts = {};
+  data.forEach((f) => {
+    counts[f.issue_id] = (counts[f.issue_id] || 0) + 1;
+  });
+  return counts;
+}
+
+export async function flagIssue(issueId) {
+  const { data } = await supabase.auth.getSession();
+  if (!data.session) throw new Error("sign_in_required");
+  const { error } = await supabase.from("flags").insert({ issue_id: issueId });
+  if (error && error.code !== "23505") throw error;
+}

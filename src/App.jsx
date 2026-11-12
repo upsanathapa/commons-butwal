@@ -16,7 +16,15 @@ import ReportForm from './components/ReportForm'
 import ReportCard from './components/ReportCard'
 import Timeline from './components/Timeline'
 import Logo from './components/Logo'
-import { fetchIssues, createIssue, confirmIssue, castFixVote, supabase } from './lib/api'
+import {
+  fetchIssues,
+  createIssue,
+  confirmIssue,
+  castFixVote,
+  supabase,
+  fetchFlagCounts,
+  flagIssue,
+} from './lib/api'
 import { t, catLabel, getLang, setLang } from './lib/i18n'
 import {
   CATEGORY_NAMES,
@@ -133,17 +141,7 @@ export default function App() {
   const [locateTick, setLocateTick] = useState(0)
   const [me, setMe] = useState(null)
   const [user, setUser] = useState(null)
-  const openedFromLink = useRef(false)
-    useEffect(() => {
-    if (openedFromLink.current || issues.length === 0) return
-    const id = new URLSearchParams(window.location.search).get('issue')
-    if (!id) return
-    const found = issues.find((i) => i.id === id)
-    if (found) {
-      openedFromLink.current = true
-      selectIssue(found)
-    }
-  }, [issues])
+  const [flagCounts, setFlagCounts] = useState({})
   const [showHow, setShowHow] = useState(() => {
     try {
       return !localStorage.getItem('commons_seen_how')
@@ -152,6 +150,7 @@ export default function App() {
     }
   })
   const markerRefs = useRef({})
+  const openedFromLink = useRef(false)
 
   function switchLang(next) {
     setLang(next)
@@ -167,7 +166,9 @@ export default function App() {
       setUser(session?.user ?? null)
     })
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null)
       loadIssues()
     })
@@ -177,12 +178,12 @@ export default function App() {
 
   async function signInWithGoogle() {
     await supabase.auth.signInWithOAuth({
-  provider: 'google',
-  options: {
-    redirectTo: window.location.origin,
-    queryParams: { prompt: 'select_account' },
-  },
-})
+      provider: 'google',
+      options: {
+        redirectTo: window.location.origin,
+        queryParams: { prompt: 'select_account' },
+      },
+    })
   }
 
   async function signOut() {
@@ -198,12 +199,15 @@ export default function App() {
     setShowHow(false)
     try {
       localStorage.setItem('commons_seen_how', '1')
-    } catch {}
+    } catch {
+      // storage unavailable: ignore
+    }
   }
 
   async function loadIssues() {
     try {
       setIssues(await fetchIssues())
+      setFlagCounts(await fetchFlagCounts())
     } catch (e) {
       console.error(e)
       notify('error', 'toast_loadFail')
@@ -233,6 +237,10 @@ export default function App() {
   }
 
   async function handleConfirm(id) {
+    if (!user) {
+      notify('error', 'sign_in_needed')
+      return
+    }
     try {
       await confirmIssue(id)
       await loadIssues()
@@ -244,6 +252,10 @@ export default function App() {
   }
 
   async function handleFixVote(id, vote) {
+    if (!user) {
+      notify('error', 'sign_in_needed')
+      return
+    }
     try {
       await castFixVote(id, vote)
       await loadIssues()
@@ -251,6 +263,22 @@ export default function App() {
     } catch (e) {
       console.error(e)
       notify('error', 'fix_failed')
+    }
+  }
+
+  async function handleFlag(id) {
+    if (!user) {
+      notify('error', 'sign_in_needed')
+      return
+    }
+    if (!window.confirm(t('flag_confirm'))) return
+    try {
+      await flagIssue(id)
+      await loadIssues()
+      notify('ok', 'flag_thanks')
+    } catch (e) {
+      console.error(e)
+      notify('error', e.message === 'sign_in_required' ? 'sign_in_needed' : 'flag_failed')
     }
   }
 
@@ -263,6 +291,7 @@ export default function App() {
       notify('error', 'toast_copyFail')
     }
   }
+
   async function copyLink(issue) {
     const url = `${window.location.origin}/?issue=${issue.id}`
     try {
@@ -273,6 +302,7 @@ export default function App() {
       notify('error', 'toast_copyFail')
     }
   }
+
   async function copyBriefing() {
     try {
       await navigator.clipboard.writeText(wardBriefing(issues))
@@ -287,6 +317,18 @@ export default function App() {
     setTarget({ lat: issue.lat, lng: issue.lng, t: Date.now() })
     setTimeout(() => markerRefs.current[issue.id]?.openPopup(), 900)
   }
+
+  // Opens the right pin when someone visits a shared link like /?issue=...
+  useEffect(() => {
+    if (openedFromLink.current || issues.length === 0) return
+    const id = new URLSearchParams(window.location.search).get('issue')
+    if (!id) return
+    const found = issues.find((i) => i.id === id)
+    if (found) {
+      openedFromLink.current = true
+      selectIssue(found)
+    }
+  }, [issues])
 
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -307,12 +349,13 @@ export default function App() {
           i.title.toLowerCase().includes(q) ||
           (i.description || '').toLowerCase().includes(q)
       )
+      .filter((i) => (flagCounts[i.id] || 0) < 3)
     return list.sort(
       sort === 'priority'
         ? (a, b) => priorityScore(b) - priorityScore(a)
         : (a, b) => new Date(b.created_at) - new Date(a.created_at)
     )
-  }, [issues, category, statusFilter, query, sort, user])
+  }, [issues, category, statusFilter, query, sort, user, flagCounts])
 
   const fixed = issues.filter((i) => isFixed(i)).length
   const confirmations = issues.reduce((sum, i) => sum + i.confirmations, 0)
@@ -342,30 +385,44 @@ export default function App() {
               <span>{t('stat_fixed')}</span>
             </div>
           </div>
-          
+
           <div className="auth-section" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             {user ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 {user.user_metadata?.avatar_url && (
-                  <img 
-                    src={user.user_metadata.avatar_url} 
-                    alt="Avatar" 
-                    style={{ width: 28, height: 28, borderRadius: '50%' }} 
+                  <img
+                    src={user.user_metadata.avatar_url}
+                    alt="Avatar"
+                    style={{ width: 28, height: 28, borderRadius: '50%' }}
                   />
                 )}
                 <button
                   className={`btn ${category === 'MyReports' ? 'btn-primary' : 'btn-ghost'}`}
-                  style={{ fontSize: '13px', padding: '6px 12px', background: category === 'MyReports' ? '#2563eb' : '#f1f5f9', color: category === 'MyReports' ? '#fff' : '#1e293b', fontWeight: '600' }}
+                  style={{
+                    fontSize: '13px',
+                    padding: '6px 12px',
+                    background: category === 'MyReports' ? '#2563eb' : '#f1f5f9',
+                    color: category === 'MyReports' ? '#fff' : '#1e293b',
+                    fontWeight: '600',
+                  }}
                   onClick={() => setCategory('MyReports')}
                 >
                   👤 My Reports
                 </button>
-                <button className="btn btn-ghost" style={{ fontSize: '13px', padding: '6px 10px' }} onClick={signOut}>
+                <button
+                  className="btn btn-ghost"
+                  style={{ fontSize: '13px', padding: '6px 10px' }}
+                  onClick={signOut}
+                >
                   Sign Out
                 </button>
               </div>
             ) : (
-              <button className="btn btn-primary" style={{ fontSize: '13px', padding: '6px 12px' }} onClick={signInWithGoogle}>
+              <button
+                className="btn btn-primary"
+                style={{ fontSize: '13px', padding: '6px 12px' }}
+                onClick={signInWithGoogle}
+              >
                 Sign in with Google
               </button>
             )}
@@ -426,9 +483,12 @@ export default function App() {
                   ))}
                 </div>
 
-                {/* Status Filter Pills */}
-                <div className="chips" style={{ marginTop: '8px', borderTop: '1px solid #e2e8f0', paddingTop: '8px' }}>
-                  {['All Status', 'reported', 'confirming', 'sent', 'fixed'].map((st) => (
+                {/* Status filter pills */}
+                <div
+                  className="chips"
+                  style={{ marginTop: '8px', borderTop: '1px solid #e2e8f0', paddingTop: '8px' }}
+                >
+                  {['All Status', 'reported', 'confirmed', 'sent', 'fixed'].map((st) => (
                     <button
                       key={st}
                       className={`chip ${statusFilter === st ? 'chip-on' : ''}`}
@@ -606,7 +666,7 @@ export default function App() {
                         <button className="btn btn-ghost" onClick={() => copyComplaint(issue)}>
                           {t('copyBtn')}
                         </button>
-                                                <button className="btn btn-ghost" onClick={() => copyLink(issue)}>
+                        <button className="btn btn-ghost" onClick={() => copyLink(issue)}>
                           {t('share_btn')}
                         </button>
                       </div>
@@ -647,6 +707,10 @@ export default function App() {
                           </div>
                         </div>
                       )}
+
+                      <button className="flag-btn" onClick={() => handleFlag(issue.id)}>
+                        ⚑ {t('flag_btn')}
+                      </button>
                     </div>
                   </Popup>
                 </Marker>
@@ -709,6 +773,7 @@ export default function App() {
           </div>
         </div>
       )}
+
       {showAbout && (
         <div className="modal-back" onClick={() => setShowAbout(false)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
@@ -746,9 +811,10 @@ export default function App() {
               when neighbours verify it.
             </p>
 
-            <h3 className="about-h">Google Authentication</h3>
+            <h3 className="about-h">Google sign-in</h3>
             <p className="about-p">
-              Neighbours can now sign in securely with Google to report issues, confirm problems, and vote on fixes.
+              Neighbours sign in with Google to confirm problems, vote on fixes, and flag fake
+              reports, so each person counts once.
             </p>
 
             <button
@@ -761,6 +827,7 @@ export default function App() {
           </div>
         </div>
       )}
+
       {toast && <div className={`toast toast-${toast.type}`}>{t(toast.key)}</div>}
     </div>
   )

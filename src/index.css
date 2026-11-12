@@ -309,3 +309,22 @@ button, input, textarea { font: inherit; }
 }
 
 .brief-btn { width: 100%; margin-top: 14px; }
+
+
+/* Mobile polish */
+@media (max-width: 800px) {
+  .popup { width: min(260px, 68vw); }
+  .btn { min-height: 42px; }
+  .chip, .sort-btn { padding: 8px 12px; font-size: 13px; }
+  .card { padding: 12px; }
+  .tab { padding: 14px 8px; }
+  .toast { bottom: 12px; font-size: 13.5px; }
+  .map-tools { left: 10px; bottom: 16px; }
+  .tool-btn { padding: 12px 16px; }
+  .leaflet-control-layers { font-size: 13px; }
+  .modal { padding: 18px; border-radius: 16px; }
+  .about-grid { grid-template-columns: 1fr 1fr; }
+}
+@supports (padding: env(safe-area-inset-bottom)) {
+  .sidebar-foot { padding-bottom: calc(10px + env(safe-area-inset-bottom)); }
+}
