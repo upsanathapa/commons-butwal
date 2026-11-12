@@ -264,3 +264,61 @@ export async function checkDuplicateIssues(details, position) {
     }))
     .sort((a, b) => a.distance - b.distance);
 }
+
+// Submit photographic proof that an issue has been resolved.
+export async function submitResolutionProof(issueId, photo, note = "") {
+  await requireUser();
+
+  if (!photo) {
+    throw new Error("A resolution photo is required.");
+  }
+
+  const userId = await getCurrentUserId();
+  if (!userId) throw new Error("sign_in_required");
+
+  // Upload the after-photo using the existing Storage bucket.
+  const photoUrl = await uploadPhoto(photo);
+
+  const { data, error } = await supabase
+    .from("resolution_proofs")
+    .insert({
+      issue_id: issueId,
+      photo_url: photoUrl,
+      note: note.trim() || null,
+      submitted_by: userId,
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+// Retrieve proof submissions for a particular issue.
+export async function fetchResolutionProofs(issueId) {
+  const { data, error } = await supabase
+    .from("resolution_proofs")
+    .select("*")
+    .eq("issue_id", issueId)
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+  return data || [];
+}
+
+// Admin review: approve or reject a proof.
+
+export async function reviewResolutionProof(proofId, decision) {
+  if (!["approved", "rejected"].includes(decision)) {
+    throw new Error("Invalid review decision.");
+  }
+
+  await requireUser();
+
+  const { error } = await supabase.rpc("review_resolution_proof", {
+    p_proof_id: proofId,
+    p_decision: decision,
+  });
+
+  if (error) throw error;
+}

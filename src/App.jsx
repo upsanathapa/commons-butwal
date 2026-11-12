@@ -16,14 +16,20 @@ import ReportForm from './components/ReportForm'
 import ReportCard from './components/ReportCard'
 import Timeline from './components/Timeline'
 import Logo from './components/Logo'
+import ResolutionProofs from './components/ResolutionProofs'
 import {
-  fetchIssues,
+   fetchIssues,
   createIssue,
   confirmIssue,
   castFixVote,
   supabase,
   fetchFlagCounts,
-  flagIssue,isAdmin,setIssueStatus,
+  flagIssue,
+  isAdmin,
+  setIssueStatus,
+  submitResolutionProof,
+  fetchResolutionProofs,
+  reviewResolutionProof,
 } from './lib/api'
 import { t, catLabel, getLang, setLang } from './lib/i18n'
 import {
@@ -728,7 +734,12 @@ const [showHow, setShowHow] = useState(() => {
                             {t('fix_counts', { f: issue.fixedVotes, b: issue.brokenVotes })}
                           </div>
                         </div>
-                      )}
+                      )}                      <ResolutionProofs
+                        issue={issue}
+                        user={user}
+                        admin={admin}
+                        onUpdated={loadIssues}
+                      />
                       {admin && (
                         <div className="admin-box">
                           <div className="admin-title">Ward staff controls</div>
