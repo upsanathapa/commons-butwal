@@ -2,14 +2,20 @@ import { useEffect, useState } from 'react'
 import { CATEGORY_NAMES, categoryInfo } from '../lib/helpers'
 import { t, catLabel } from '../lib/i18n'
 
-export default function ReportForm({ position, onSubmit, onCancel }) {
+export default function ReportForm({ position, onSubmit, onCancel, user }) {
   const [title, setTitle] = useState('')
   const [category, setCategory] = useState(CATEGORY_NAMES[0])
   const [description, setDescription] = useState('')
-  const [reporter, setReporter] = useState('')
+  const [reporter, setReporter] = useState(() => user?.user_metadata?.full_name || '')
   const [photo, setPhoto] = useState(null)
   const [preview, setPreview] = useState('')
   const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    if (user?.user_metadata?.full_name && !reporter) {
+      setReporter(user.user_metadata.full_name)
+    }
+  }, [user])
 
   useEffect(() => {
     if (!photo) {
@@ -95,7 +101,9 @@ export default function ReportForm({ position, onSubmit, onCancel }) {
         onChange={(e) => setDescription(e.target.value)}
       />
 
-      <label className="label">{t('form_name')}</label>
+      <label className="label">
+        {t('form_name')} {user && <span style={{ color: '#2563eb', fontSize: '12px' }}>✓ Verified Google Account</span>}
+      </label>
       <input
         className="input"
         placeholder={t('form_namePh')}
