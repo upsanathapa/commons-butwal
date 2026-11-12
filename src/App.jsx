@@ -124,6 +124,7 @@ export default function App() {
   const [loading, setLoading] = useState(true)
   const [pending, setPending] = useState(null)
   const [category, setCategory] = useState('All')
+  const [statusFilter, setStatusFilter] = useState('All Status')
   const [query, setQuery] = useState('')
   const [sort, setSort] = useState('priority')
   const [tab, setTab] = useState('issues')
@@ -275,6 +276,10 @@ export default function App() {
         }
         return category === 'All' || i.category === category
       })
+      .filter((i) => {
+        if (statusFilter === 'All Status') return true
+        return statusKey(i) === statusFilter
+      })
       .filter(
         (i) =>
           !q ||
@@ -286,7 +291,7 @@ export default function App() {
         ? (a, b) => priorityScore(b) - priorityScore(a)
         : (a, b) => new Date(b.created_at) - new Date(a.created_at)
     )
-  }, [issues, category, query, sort, user])
+  }, [issues, category, statusFilter, query, sort, user])
 
   const fixed = issues.filter((i) => isFixed(i)).length
   const confirmations = issues.reduce((sum, i) => sum + i.confirmations, 0)
@@ -319,7 +324,7 @@ export default function App() {
           
           <div className="auth-section" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             {user ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 {user.user_metadata?.avatar_url && (
                   <img 
                     src={user.user_metadata.avatar_url} 
@@ -327,7 +332,14 @@ export default function App() {
                     style={{ width: 28, height: 28, borderRadius: '50%' }} 
                   />
                 )}
-                <button className="btn btn-ghost" style={{ fontSize: '13px', padding: '4px 8px' }} onClick={signOut}>
+                <button
+                  className={`btn ${category === 'MyReports' ? 'btn-primary' : 'btn-ghost'}`}
+                  style={{ fontSize: '13px', padding: '6px 12px', background: category === 'MyReports' ? '#2563eb' : '#f1f5f9', color: category === 'MyReports' ? '#fff' : '#1e293b', fontWeight: '600' }}
+                  onClick={() => setCategory('MyReports')}
+                >
+                  👤 My Reports
+                </button>
+                <button className="btn btn-ghost" style={{ fontSize: '13px', padding: '6px 10px' }} onClick={signOut}>
                   Sign Out
                 </button>
               </div>
@@ -382,13 +394,6 @@ export default function App() {
                   onChange={(e) => setQuery(e.target.value)}
                 />
                 <div className="chips">
-                  <button
-                    className={`chip ${category === 'MyReports' ? 'chip-on' : ''}`}
-                    onClick={() => setCategory('MyReports')}
-                    style={{ background: category === 'MyReports' ? '#2563eb' : undefined, color: category === 'MyReports' ? '#fff' : undefined }}
-                  >
-                    👤 My Reports
-                  </button>
                   {['All', ...CATEGORY_NAMES].map((c) => (
                     <button
                       key={c}
@@ -399,7 +404,22 @@ export default function App() {
                     </button>
                   ))}
                 </div>
-                <div className="sort">
+
+                {/* Status Filter Pills */}
+                <div className="chips" style={{ marginTop: '8px', borderTop: '1px solid #e2e8f0', paddingTop: '8px' }}>
+                  {['All Status', 'reported', 'confirming', 'sent', 'fixed'].map((st) => (
+                    <button
+                      key={st}
+                      className={`chip ${statusFilter === st ? 'chip-on' : ''}`}
+                      onClick={() => setStatusFilter(st)}
+                      style={{ fontSize: '11px', padding: '3px 8px' }}
+                    >
+                      {st === 'All Status' ? '🔍 All Status' : st.charAt(0).toUpperCase() + st.slice(1)}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="sort" style={{ marginTop: '8px' }}>
                   <button
                     className={`sort-btn ${sort === 'priority' ? 'sort-on' : ''}`}
                     onClick={() => setSort('priority')}
