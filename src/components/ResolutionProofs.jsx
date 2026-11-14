@@ -12,6 +12,7 @@ export default function ResolutionProofs({
   admin,
   onUpdated,
 }) {
+    const [busyId, setBusyId] = useState(null)
   const [proofs, setProofs] = useState([])
   const [photo, setPhoto] = useState(null)
   const [note, setNote] = useState('')
@@ -37,6 +38,7 @@ export default function ResolutionProofs({
 
   async function handleSubmit(e) {
     e.preventDefault()
+        if (submitting) return
     if (!photo) {
       setError('Please select an after-photo.')
       return
@@ -54,21 +56,27 @@ export default function ResolutionProofs({
 
       await loadProofs()
       onUpdated?.()
-    } catch (err) {
-      setError(err.message || 'Could not submit proof.')
-    } finally {
-      setSubmitting(false)
+        } catch (err) {
+      setError(
+        err.code === '23505'
+          ? 'A proof for this issue is already waiting for review.'
+          : err.message || 'Could not submit proof.'
+      )
     }
   }
 
-  async function handleReview(proofId, decision) {
+    async function handleReview(proofId, decision) {
+    if (busyId) return
     try {
+      setBusyId(proofId)
       setError('')
       await reviewResolutionProof(proofId, decision)
       await loadProofs()
       onUpdated?.()
     } catch (err) {
       setError(err.message || 'Could not review proof.')
+    } finally {
+      setBusyId(null)
     }
   }
 
@@ -133,19 +141,21 @@ export default function ResolutionProofs({
 
             {admin && proof.status === 'pending' && (
               <div className="proof-review-actions">
-                <button
-                  type="button"
-                  onClick={() => handleReview(proof.id, 'approved')}
-                >
-                  Approve
-                </button>
+               <button
+  type="button"
+  disabled={busyId !== null}
+  onClick={() => handleReview(proof.id, 'approved')}
+>
+  {busyId === proof.id ? 'Working...' : 'Approve'}
+</button>
 
-                <button
-                  type="button"
-                  onClick={() => handleReview(proof.id, 'rejected')}
-                >
-                  Reject
-                </button>
+<button
+  type="button"
+  disabled={busyId !== null}
+  onClick={() => handleReview(proof.id, 'rejected')}
+>
+  {busyId === proof.id ? 'Working...' : 'Reject'}
+</button>
               </div>
             )}
           </div>
