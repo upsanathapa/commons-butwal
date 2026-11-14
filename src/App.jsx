@@ -330,6 +330,11 @@ const [showHow, setShowHow] = useState(() => {
       notify('error', 'toast_copyFail')
     }
   }
+    function sendWhatsApp(issue) {
+    const link = `${window.location.origin}/?issue=${issue.id}`
+    const text = `${complaintText(issue)}\n${link}`
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank')
+  }
 
   async function copyBriefing() {
     try {
@@ -696,6 +701,9 @@ const [showHow, setShowHow] = useState(() => {
                         </button>
                         <button className="btn btn-ghost" onClick={() => copyLink(issue)}>
                           {t('share_btn')}
+                        </button>
+                                                <button className="btn btn-ghost" onClick={() => sendWhatsApp(issue)}>
+                          {t('wa_btn')}
                         </button>
                       </div>
 
