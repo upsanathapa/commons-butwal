@@ -133,6 +133,7 @@ button, input, textarea { font: inherit; }
 /* Map */
 .map-wrap { flex: 1; position: relative; min-width: 0; }
 .map-wrap .leaflet-container { position: absolute; inset: 0; font-family: inherit; }
+.leaflet-top { z-index: 1250; }
 .hint {
   position: absolute; top: 14px; left: 50%; transform: translateX(-50%); z-index: 1000;
   background: #fff; padding: 8px 14px; border-radius: 999px; font-size: 13.5px;
@@ -167,30 +168,32 @@ button, input, textarea { font: inherit; }
 .tool-primary:hover { background: var(--brand-dark); }
 
 /* Popup */
-
+.leaflet-popup { max-width: calc(100vw - 24px); }
 .leaflet-popup-content-wrapper {
   border-radius: 14px;
+  max-width: calc(100vw - 24px);
   max-height: 75vh;
   overflow-y: auto;
 }
-
 .leaflet-popup-content {
   margin: 12px;
+  max-width: calc(100vw - 48px);
   max-height: 70vh;
   overflow-y: auto;
   overscroll-behavior: contain;
 }
-
 .popup {
   width: 260px;
+  max-width: 100%;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
-
 .popup-photo { width: 100%; height: 120px; object-fit: cover; border-radius: 10px; margin-bottom: 8px; }
-.popup-title { font-weight: 700; font-size: 15px; margin-bottom: 2px; }
+.popup-title { font-weight: 700; font-size: 15px; margin-bottom: 2px; overflow-wrap: break-word; }
 .popup-meta { color: var(--muted); font-size: 12.5px; margin-bottom: 6px; }
 .popup-row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin-bottom: 6px; }
 .popup-days { font-size: 12.5px; font-weight: 600; color: var(--accent-dark); }
-.popup-desc { margin: 8px 0 4px; font-size: 13.5px; line-height: 1.4; }
+.popup-desc { margin: 8px 0 4px; font-size: 13.5px; line-height: 1.4; overflow-wrap: break-word; }
 .popup-by { color: var(--muted); font-size: 12px; margin-bottom: 10px; }
 .popup-actions { display: flex; flex-direction: column; gap: 6px; }
 
@@ -230,8 +233,9 @@ button, input, textarea { font: inherit; }
 .btn-ghost { background: #fff; border-color: var(--line); color: var(--ink); }
 .btn-ghost:hover { border-color: var(--brand); }
 .icon-btn {
-  border: none; background: var(--bg); width: 30px; height: 30px; border-radius: 50%;
+  border: none; background: var(--bg); width: 36px; height: 36px; border-radius: 50%;
   font-size: 20px; line-height: 1; cursor: pointer; color: var(--muted);
+  display: grid; place-items: center;
 }
 
 /* Report form */
@@ -278,7 +282,7 @@ button, input, textarea { font: inherit; }
 }
 .rc-item:hover { border-color: var(--accent); }
 .rc-item-label { display: block; font-size: 11px; font-weight: 700; color: var(--accent-dark); text-transform: uppercase; letter-spacing: 0.04em; }
-.rc-item-title { display: block; font-weight: 600; font-size: 14px; margin: 2px 0; }
+.rc-item-title { display: block; font-weight: 600; font-size: 14px; margin: 2px 0; overflow-wrap: break-word; }
 .rc-item-meta { display: block; font-size: 12px; color: var(--muted); }
 .rc-section { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); margin: 16px 0 8px; }
 .cat-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 13px; }
@@ -311,16 +315,23 @@ button, input, textarea { font: inherit; }
 /* Phones */
 @media (max-width: 800px) {
   .header { padding: 10px 14px; }
+  .brand { min-width: 0; }
+  .brand > div { min-width: 0; }
+  .header h1 { font-size: 16px; white-space: nowrap; }
+  .header p { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 11.5px; }
   .stats { display: none; }
   .header-right { gap: 6px; }
-  .how-btn { padding: 6px 10px; font-size: 12px; }
-  .lang button { padding: 5px 8px; }
+  .how-btn { padding: 7px 11px; font-size: 12px; min-height: 36px; display: inline-flex; align-items: center; }
+  .lang button { padding: 6px 10px; font-size: 12px; min-height: 36px; }
+  .chip { padding: 7px 12px; min-height: 36px; display: inline-flex; align-items: center; }
+  .sort-btn { padding: 8px 10px; min-height: 36px; }
+  .btn { min-height: 40px; }
   .main { flex-direction: column; }
   .map-wrap { order: -1; min-height: 300px; }
   .sidebar { width: 100%; height: 42%; border-right: none; border-top: 1px solid var(--line); }
-  .report { left: 10px; right: 10px; top: auto; bottom: 10px; width: auto; max-height: 75%; }
-  .hint { font-size: 12.5px; }
-  .cat-name { width: 110px; }
+  .report { left: 10px; right: 10px; top: auto; bottom: 10px; width: auto; max-height: 55%; }
+  .hint { font-size: 12px; white-space: normal; max-width: calc(100% - 24px); width: max-content; text-align: center; }
+  .cat-name { width: 110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 }
 
 .brief-btn { width: 100%; margin-top: 14px; }
