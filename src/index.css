@@ -464,3 +464,58 @@ button, input, textarea { font: inherit; }
   color: #b91c1c !important;
   font-weight: 600;
 }
+.help-box { margin-top: 12px; padding: 10px; background: var(--brand-soft); border-radius: 10px; }
+.help-count { font-weight: 700; font-size: 13px; color: var(--brand-dark); margin-bottom: 6px; }
+.help-note { margin-top: 6px; font-size: 11.5px; color: var(--muted); }/* Compact popup */
+.popup { width: 270px; }
+.popup-photo { height: 90px; }
+.popup-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.popup-actions .btn-primary { grid-column: 1 / -1; }
+.popup-actions .btn { padding: 7px 8px; font-size: 12px; }
+.fold { margin-top: 10px; border-top: 1px dashed var(--line); padding-top: 8px; }
+.fold > summary, .admin-box > summary {
+  cursor: pointer; font-weight: 700; font-size: 13px; color: var(--brand-dark); list-style: none;
+}
+.fold > summary::before, .admin-box > summary::before { content: '▸ '; }
+.fold[open] > summary::before, .admin-box[open] > summary::before { content: '▾ '; }
+.verify-btns { flex-direction: row; }
+.verify-btns .btn { flex: 1; padding: 7px 8px; font-size: 12px; }
+.help-box { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px; }
+.help-box .btn { padding: 6px 10px; font-size: 12px; }
+.help-note { flex-basis: 100%; }
+.resolution-proofs h3 { font-size: 13px; margin: 6px 0; }
+.resolution-proofs h4 { font-size: 12px; margin: 8px 0 4px; }
+.resolution-proofs p { font-size: 12.5px; margin: 4px 0; }
+.leaflet-popup-content-wrapper { max-height: 70vh; overflow-y: auto; }
+
+/* Smooth scrolling: one scroller in the popup, contained scroll in the form */
+.leaflet-popup-content-wrapper { max-height: none; overflow: hidden; }
+.leaflet-popup-content {
+  max-height: 65vh;
+  max-height: 65dvh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+  padding-right: 4px;
+}
+.report {
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+}
+
+/* Neighbours ready to help: slim card with a pill button */
+.popup .help-box {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+  gap: 4px 10px; margin-top: 10px; padding: 8px 10px;
+  background: #fff; border: 1px solid var(--line); border-left: 4px solid var(--brand);
+  border-radius: 10px;
+}
+.popup .help-count { flex: 1 1 130px; margin: 0; font-size: 12.5px; font-weight: 600; color: var(--ink); }
+.popup .help-box .btn {
+  flex: 0 0 auto; padding: 5px 12px; border-radius: 999px; font-size: 12px;
+  background: var(--brand-soft); border-color: transparent; color: var(--brand-dark);
+}
+.popup .help-box .btn:hover { background: var(--brand); color: #fff; }
+.popup .help-note { flex-basis: 100%; margin: 0; font-size: 11px; line-height: 1.3; color: var(--muted); }
