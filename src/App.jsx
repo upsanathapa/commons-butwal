@@ -18,7 +18,7 @@ import Timeline from './components/Timeline'
 import Logo from './components/Logo'
 import ResolutionProofs from './components/ResolutionProofs'
 import {
-   fetchIssues,
+  fetchIssues,
   createIssue,
   confirmIssue,
   castFixVote,
@@ -27,9 +27,8 @@ import {
   flagIssue,
   isAdmin,
   setIssueStatus,
-  submitResolutionProof,
-  fetchResolutionProofs,
-  reviewResolutionProof,
+  fetchHelpers,
+  toggleHelper,
 } from './lib/api'
 import { t, catLabel, getLang, setLang } from './lib/i18n'
 import {
@@ -105,29 +104,55 @@ function ClickHandler({ onPick }) {
 
 function FlyTo({ target }) {
   const map = useMap()
+
   useEffect(() => {
     if (target) {
-      map.flyTo([target.lat, target.lng], Math.max(map.getZoom(), 17), { duration: 0.8 })
+      map.flyTo([target.lat, target.lng], Math.max(map.getZoom(), 17), {
+        duration: 0.8,
+      })
     }
   }, [target, map])
+
+  return null
+}
+
+function ClosePopupWhenReporting({ pending }) {
+  const map = useMap()
+
+  useEffect(() => {
+    if (pending) map.closePopup()
+  }, [pending, map])
+
   return null
 }
 
 function Locator({ tick, onFound, onError }) {
   const map = useMap()
+
   useMapEvents({
     locationfound(e) {
-      onFound({ lat: e.latlng.lat, lng: e.latlng.lng, acc: e.accuracy })
+      onFound({
+        lat: e.latlng.lat,
+        lng: e.latlng.lng,
+        acc: e.accuracy,
+      })
     },
     locationerror() {
       onError()
     },
   })
+
   useEffect(() => {
     if (tick > 0) {
-      map.locate({ setView: true, maxZoom: 19, enableHighAccuracy: true, timeout: 15000 })
+      map.locate({
+        setView: true,
+        maxZoom: 19,
+        enableHighAccuracy: true,
+        timeout: 15000,
+      })
     }
   }, [tick, map])
+
   return null
 }
 
@@ -148,8 +173,9 @@ export default function App() {
   const [me, setMe] = useState(null)
   const [user, setUser] = useState(null)
   const [flagCounts, setFlagCounts] = useState({})
-    const [admin, setAdmin] = useState(false)
-const [showHow, setShowHow] = useState(() => {
+  const [helpers, setHelpers] = useState({ counts: {}, mine: {} })
+  const [admin, setAdmin] = useState(false)
+  const [showHow, setShowHow] = useState(() => {
     try {
       return !localStorage.getItem('commons_seen_how')
     } catch {
@@ -168,7 +194,6 @@ const [showHow, setShowHow] = useState(() => {
     document.documentElement.lang = lang
   }, [lang])
 
-  
   // Get the current session and listen for authentication changes
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -191,7 +216,6 @@ const [showHow, setShowHow] = useState(() => {
       setAdmin(false)
       return
     }
-
     isAdmin().then(setAdmin)
   }, [user])
 
@@ -227,6 +251,7 @@ const [showHow, setShowHow] = useState(() => {
     try {
       setIssues(await fetchIssues())
       setFlagCounts(await fetchFlagCounts())
+      setHelpers(await fetchHelpers())
     } catch (e) {
       console.error(e)
       notify('error', 'toast_loadFail')
@@ -300,6 +325,23 @@ const [showHow, setShowHow] = useState(() => {
       notify('error', e.message === 'sign_in_required' ? 'sign_in_needed' : 'flag_failed')
     }
   }
+
+  async function handleHelp(id) {
+    if (!user) {
+      notify('error', 'sign_in_needed')
+      return
+    }
+    const wasHelping = !!helpers.mine[id]
+    try {
+      await toggleHelper(id, !wasHelping)
+      await loadIssues()
+      if (!wasHelping) notify('ok', 'help_thanks')
+    } catch (e) {
+      console.error(e)
+      notify('error', 'help_failed')
+    }
+  }
+
   async function handleSetStatus(id, status) {
     try {
       await setIssueStatus(id, status)
@@ -310,6 +352,7 @@ const [showHow, setShowHow] = useState(() => {
       notify('error', 'admin_failed')
     }
   }
+
   async function copyComplaint(issue) {
     try {
       await navigator.clipboard.writeText(complaintText(issue))
@@ -330,7 +373,8 @@ const [showHow, setShowHow] = useState(() => {
       notify('error', 'toast_copyFail')
     }
   }
-    function sendWhatsApp(issue) {
+
+  function sendWhatsApp(issue) {
     const link = `${window.location.origin}/?issue=${issue.id}`
     const text = `${complaintText(issue)}\n${link}`
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank')
@@ -599,6 +643,7 @@ const [showHow, setShowHow] = useState(() => {
 
         <div className="map-wrap">
           <MapContainer center={CENTER} zoom={17} maxZoom={19}>
+  <ClosePopupWhenReporting pending={pending} />
             <LayersControl key={lang} position="topright">
               <LayersControl.BaseLayer checked name={t('layer_streets')}>
                 <TileLayer
@@ -687,6 +732,7 @@ const [showHow, setShowHow] = useState(() => {
                           ? t('reportedBy', { name: issue.reporter })
                           : t('anonymous')}
                       </div>
+
                       <div className="popup-actions">
                         <button
                           className="btn btn-primary"
@@ -702,9 +748,19 @@ const [showHow, setShowHow] = useState(() => {
                         <button className="btn btn-ghost" onClick={() => copyLink(issue)}>
                           {t('share_btn')}
                         </button>
-                                                <button className="btn btn-ghost" onClick={() => sendWhatsApp(issue)}>
+                        <button className="btn btn-ghost" onClick={() => sendWhatsApp(issue)}>
                           {t('wa_btn')}
                         </button>
+                      </div>
+
+                      <div className="help-box">
+                        <div className="help-count">
+                          🤝 {t('help_count', { n: helpers.counts[issue.id] || 0 })}
+                        </div>
+                        <button className="btn btn-ghost" onClick={() => handleHelp(issue.id)}>
+                          {helpers.mine[issue.id] ? t('help_withdraw') : t('help_btn')}
+                        </button>
+                        <div className="help-note">{t('help_note')}</div>
                       </div>
 
                       {['sent', 'fixed', 'disputed'].includes(statusKey(issue)) && (
@@ -742,15 +798,21 @@ const [showHow, setShowHow] = useState(() => {
                             {t('fix_counts', { f: issue.fixedVotes, b: issue.brokenVotes })}
                           </div>
                         </div>
-                      )}                      <ResolutionProofs
-                        issue={issue}
-                        user={user}
-                        admin={admin}
-                        onUpdated={loadIssues}
-                      />
+                      )}
+
+                      <details className="fold">
+                        <summary>Proof of resolution</summary>
+                        <ResolutionProofs
+                          issue={issue}
+                          user={user}
+                          admin={admin}
+                          onUpdated={loadIssues}
+                        />
+                      </details>
+
                       {admin && (
-                        <div className="admin-box">
-                          <div className="admin-title">Ward staff controls</div>
+                        <details className="admin-box">
+                          <summary className="admin-title">Ward staff controls</summary>
                           <div className="admin-btns">
                             {['reported', 'sent', 'fixed'].map((s) => (
                               <button
@@ -762,8 +824,9 @@ const [showHow, setShowHow] = useState(() => {
                               </button>
                             ))}
                           </div>
-                        </div>
+                        </details>
                       )}
+
                       <button className="flag-btn" onClick={() => handleFlag(issue.id)}>
                         ⚑ {t('flag_btn')}
                       </button>

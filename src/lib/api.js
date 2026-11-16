@@ -322,3 +322,36 @@ export async function reviewResolutionProof(proofId, decision) {
 
   if (error) throw error;
 }
+export async function fetchHelpers() {
+  const { data, error } = await supabase
+    .from("helpers")
+    .select("issue_id, user_id");
+  if (error || !data) return { counts: {}, mine: {} };
+  const { data: s } = await supabase.auth.getSession();
+  const me = s.session?.user?.id;
+  const counts = {};
+  const mine = {};
+  data.forEach((h) => {
+    counts[h.issue_id] = (counts[h.issue_id] || 0) + 1;
+    if (me && h.user_id === me) mine[h.issue_id] = true;
+  });
+  return { counts, mine };
+}
+
+export async function toggleHelper(issueId, on) {
+  const { data: s } = await supabase.auth.getSession();
+  if (!s.session) throw new Error("sign_in_required");
+  if (on) {
+    const { error } = await supabase
+      .from("helpers")
+      .insert({ issue_id: issueId });
+    if (error && error.code !== "23505") throw error;
+  } else {
+    const { error } = await supabase
+      .from("helpers")
+      .delete()
+      .eq("issue_id", issueId)
+      .eq("user_id", s.session.user.id);
+    if (error) throw error;
+  }
+}
