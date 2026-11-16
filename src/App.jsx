@@ -711,8 +711,12 @@ export default function App() {
                 >
                   <Popup>
                     <div className="popup">
-                      {issue.photo_url && (
-                        <img className="popup-photo" src={issue.photo_url} alt={issue.title} />
+                                                            {issue.photo_url && (
+                        <div className="photo-frame" style={{ '--bg': `url(${issue.photo_url})` }}>
+                          <a href={issue.photo_url} target="_blank" rel="noreferrer">
+                            <img className="popup-photo" src={issue.photo_url} alt={issue.title} />
+                          </a>
+                        </div>
                       )}
                       <div className="popup-title">{issue.title}</div>
                       <div className="popup-meta">
