@@ -541,3 +541,16 @@ button, input, textarea { font: inherit; }
 }
 .photo-frame a { position: relative; display: block; }
 .photo-frame .popup-photo { background: transparent; border-radius: 0; margin: 0 auto; display: block; }
+/* Phone layout fixes */
+@media (max-width: 800px) {
+  .header { padding-top: calc(10px + env(safe-area-inset-top, 0px)); }
+  .header p { display: none; }
+  .hint { display: none; }
+  .leaflet-control-zoom { display: none; }
+  .map-wrap { min-height: 52vh; }
+  .sidebar { height: 34%; }
+  .leaflet-popup-content { max-height: 46vh; max-height: 46dvh; }
+  .popup { width: min(260px, 70vw); }
+  .popup-photo { max-height: 130px; }
+  .map-tools { bottom: 12px; left: 10px; }
+}
